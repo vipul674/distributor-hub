@@ -57,6 +57,16 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        chart: {
+          purple: {
+            dark: "hsl(var(--chart-purple-dark))",
+            medium: "hsl(var(--chart-purple-medium))",
+            light: "hsl(var(--chart-purple-light))",
+          },
+        },
+        success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
+        danger: "hsl(var(--danger))",
       },
       borderRadius: {
         lg: "var(--radius)",
