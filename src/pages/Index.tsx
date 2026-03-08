@@ -7,17 +7,17 @@ import StockAlerts from "@/components/dashboard/StockAlerts";
 import DemandPrediction from "@/components/dashboard/DemandPrediction";
 import TopRecommendations from "@/components/dashboard/TopRecommendations";
 import BusinessExpansion from "@/components/dashboard/BusinessExpansion";
+import { dashboardStats } from "@/assets/fakeData";
 
 const Index = () => {
   return (
     <DashboardLayout>
       <DashboardHeader userName="Sahith" />
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatsCard title="Monthly Sales" value="$50" />
-        <StatsCard title="Stock Availability" value="320" subtitle="Products" />
-        <StatsCard title="Damaged Stock" value="23" subtitle="items" />
+        <StatsCard title="Monthly Sales" value={dashboardStats.monthlySales} />
+        <StatsCard title="Stock Availability" value={dashboardStats.stockAvailability} subtitle="Products" />
+        <StatsCard title="Damaged Stock" value={dashboardStats.damagedStock} subtitle="items" />
         <StatsCard 
           title="Demand Forecast" 
           value="High Demand Alerts" 
@@ -26,15 +26,11 @@ const Index = () => {
         />
       </div>
 
-      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Chart and Recommendations */}
         <div className="lg:col-span-2 space-y-6">
           <SalesOverviewChart />
           <TopRecommendations />
         </div>
-
-        {/* Right Column - Alerts and Predictions */}
         <div className="space-y-6">
           <StockAlerts />
           <DemandPrediction />
