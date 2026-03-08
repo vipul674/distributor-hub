@@ -1,15 +1,25 @@
 import { useState } from "react";
-import { Search, Package, ArrowDown, AlertTriangle, Plus, Edit } from "lucide-react";
+import { Search, Package, ArrowDown, AlertTriangle, Plus, Edit, X } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { products, stockSummary, stockAlerts, lowStockRecommendations, damagedProducts } from "@/assets/fakeData";
+import { products as initialProducts, stockAlerts, lowStockRecommendations, damagedProducts, Product } from "@/assets/fakeData";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
+
+const emptyProduct: Omit<Product, "id"> = {
+  name: "", category: "", supplier: "", costPrice: 0, sellingPrice: 0, stockQty: 0, status: "in-stock",
+};
 
 const StockManagement = () => {
+  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [form, setForm] = useState(emptyProduct);
 
   const categories = ["All Categories", ...new Set(products.map((p) => p.category))];
 
@@ -22,69 +32,88 @@ const StockManagement = () => {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
+  const openAdd = () => {
+    setEditingProduct(null);
+    setForm(emptyProduct);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (product: Product) => {
+    setEditingProduct(product);
+    setForm({ name: product.name, category: product.category, supplier: product.supplier, costPrice: product.costPrice, sellingPrice: product.sellingPrice, stockQty: product.stockQty, status: product.status });
+    setDialogOpen(true);
+  };
+
+  const handleSave = () => {
+    if (!form.name.trim() || !form.category.trim()) {
+      toast({ title: "Error", description: "Name and category are required", variant: "destructive" });
+      return;
+    }
+    const status = form.stockQty < 20 ? "low-stock" as const : "in-stock" as const;
+
+    if (editingProduct) {
+      setProducts(products.map((p) => p.id === editingProduct.id ? { ...p, ...form, status } : p));
+      toast({ title: "Product Updated", description: `${form.name} has been updated` });
+    } else {
+      const newProduct: Product = { ...form, status, id: Math.max(...products.map((p) => p.id)) + 1 };
+      setProducts([...products, newProduct]);
+      toast({ title: "Product Added", description: `${form.name} has been added` });
+    }
+    setDialogOpen(false);
+  };
+
+  const summary = {
+    totalProducts: products.length,
+    inStockItems: products.filter((p) => p.status === "in-stock").length,
+    lowStockItems: products.filter((p) => p.status === "low-stock").length,
+    damagedStock: damagedProducts.length,
+  };
+
   return (
     <DashboardLayout>
       <DashboardHeader userName="Sahith" />
-
       <h1 className="text-2xl font-bold text-foreground mb-6">Stock Management</h1>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <div className="bg-primary rounded-xl p-4 text-primary-foreground">
           <p className="text-sm opacity-80">Total Products</p>
-          <p className="text-2xl font-bold flex items-center gap-2"><Package size={20} /> {stockSummary.totalProducts}</p>
+          <p className="text-2xl font-bold flex items-center gap-2"><Package size={20} /> {summary.totalProducts}</p>
         </div>
         <div className="bg-primary/80 rounded-xl p-4 text-primary-foreground">
           <p className="text-sm opacity-80">In Stock Items</p>
-          <p className="text-2xl font-bold flex items-center gap-2"><ArrowDown size={20} /> {stockSummary.inStockItems}</p>
+          <p className="text-2xl font-bold flex items-center gap-2"><ArrowDown size={20} /> {summary.inStockItems}</p>
         </div>
         <div className="bg-card rounded-xl p-4 border border-warning text-warning">
           <p className="text-sm">Low Stock</p>
-          <p className="text-2xl font-bold">{stockSummary.lowStockItems} Items</p>
+          <p className="text-2xl font-bold">{summary.lowStockItems} Items</p>
         </div>
-        <div className="bg-card rounded-xl p-4 border border-danger text-danger">
+        <div className="bg-card rounded-xl p-4 border border-destructive text-destructive">
           <p className="text-sm">Damaged Stock</p>
-          <p className="text-2xl font-bold">{stockSummary.damagedStock} Items</p>
+          <p className="text-2xl font-bold">{summary.damagedStock} Items</p>
         </div>
-        <button className="bg-primary rounded-xl p-4 text-primary-foreground flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+        <button onClick={openAdd} className="bg-primary rounded-xl p-4 text-primary-foreground flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
           <Plus size={20} /> Add Product
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Main Table */}
         <div className="lg:col-span-3 space-y-4">
-          {/* Search & Filters */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search by product, category or supplier..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
+              <input type="text" placeholder="Search by product, category or supplier..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-9 pr-4 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
             </div>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
-            >
+            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm">
               {categories.map((c) => <option key={c}>{c}</option>)}
             </select>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
-            >
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm">
               <option value="All">Stock Status: All</option>
               <option value="in-stock">In Stock</option>
               <option value="low-stock">Low Stock</option>
             </select>
           </div>
 
-          {/* Products Table */}
           <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
             <Table>
               <TableHeader>
@@ -109,13 +138,11 @@ const StockManagement = () => {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {product.stockQty}
-                        {product.status === "low-stock" && (
-                          <Badge variant="destructive" className="text-xs">Low Stock</Badge>
-                        )}
+                        {product.status === "low-stock" && <Badge variant="destructive" className="text-xs">Low Stock</Badge>}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <button className="flex items-center gap-1 px-3 py-1 rounded bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors">
+                      <button onClick={() => openEdit(product)} className="flex items-center gap-1 px-3 py-1 rounded bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors">
                         <Edit size={12} /> Edit
                       </button>
                     </TableCell>
@@ -131,20 +158,17 @@ const StockManagement = () => {
 
         {/* Right Sidebar */}
         <div className="space-y-6">
-          {/* Stock Alerts */}
           <div className="bg-card rounded-xl p-5 border border-border shadow-sm">
             <h3 className="text-base font-semibold text-card-foreground mb-4">Stock Alerts</h3>
             <div className="space-y-3">
               {stockAlerts.map((alert) => (
                 <div key={alert.id} className="flex items-center gap-2 text-sm">
-                  <AlertTriangle size={14} className={alert.type === "low-stock" ? "text-danger" : "text-warning"} />
+                  <AlertTriangle size={14} className={alert.type === "low-stock" ? "text-destructive" : "text-warning"} />
                   <span className="text-card-foreground">{alert.message}</span>
                 </div>
               ))}
             </div>
           </div>
-
-          {/* Damaged Stock Summary */}
           <div className="bg-card rounded-xl p-5 border border-border shadow-sm">
             <h3 className="text-base font-semibold text-card-foreground mb-4">Damaged Stock Summary</h3>
             <div className="space-y-3">
@@ -156,8 +180,6 @@ const StockManagement = () => {
               ))}
             </div>
           </div>
-
-          {/* Low Stock Recommendations */}
           <div className="bg-card rounded-xl p-5 border border-border shadow-sm">
             <h3 className="text-base font-semibold text-card-foreground mb-4">Low Stock Recommendations</h3>
             <div className="space-y-3">
@@ -171,6 +193,44 @@ const StockManagement = () => {
           </div>
         </div>
       </div>
+
+      {/* Add/Edit Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            {(["name", "category", "supplier"] as const).map((field) => (
+              <div key={field}>
+                <label className="text-sm text-muted-foreground capitalize">{field}</label>
+                <input
+                  type="text"
+                  value={(form as any)[field]}
+                  onChange={(e) => setForm({ ...form, [field]: e.target.value })}
+                  className="w-full px-3 py-2 mt-1 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+            ))}
+            <div className="grid grid-cols-3 gap-3">
+              {(["costPrice", "sellingPrice", "stockQty"] as const).map((field) => (
+                <div key={field}>
+                  <label className="text-sm text-muted-foreground">{field === "costPrice" ? "Cost ₹" : field === "sellingPrice" ? "Sell ₹" : "Qty"}</label>
+                  <input
+                    type="number"
+                    value={(form as any)[field] || ""}
+                    onChange={(e) => setForm({ ...form, [field]: Number(e.target.value) })}
+                    className="w-full px-3 py-2 mt-1 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              ))}
+            </div>
+            <button onClick={handleSave} className="w-full py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
+              {editingProduct ? "Update Product" : "Add Product"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
