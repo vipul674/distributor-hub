@@ -10,7 +10,7 @@ import {
 import { NavLink } from "@/components/NavLink";
 
 const menuItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Upload Bills", url: "/upload-bills", icon: Upload },
   { title: "Generate Bills", url: "/generate-bills", icon: FileText },
   { title: "Stock Management", url: "/stock-management", icon: Package },
