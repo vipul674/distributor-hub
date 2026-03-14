@@ -1,73 +1,134 @@
-# Welcome to your Lovable project
+# Distributor Hub
 
-## Project info
+Distributor Hub is a full-stack analytics app for retail distributors.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+- Frontend: React + Vite + TypeScript + Tailwind + shadcn/ui
+- Backend: Express + TypeScript + ONNX Runtime (`onnxruntime-node`)
+- ML Models: demand forecast + trend classification + recommendation scoring
 
-## How can I edit this code?
+## Prerequisites
 
-There are several ways of editing your application.
+- Node.js 20+ (recommended)
+- npm 10+
+- Git
 
-**Use Lovable**
+## Project Structure
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+```text
+.
+├── src/                  # Frontend (Vite + React)
+├── server/               # Backend API (Express + TS + ONNX)
+└── Retail_Models_Onnx/   # ONNX model files
+```
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## 1) Clone the Repository
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+git clone https://github.com/Rameshkorada07/distributor-hub.git
+cd distributor-hub
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## 2) Install Dependencies
 
-# Step 3: Install the necessary dependencies.
-npm i
+Install frontend dependencies:
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```sh
+npm install
+```
+
+Install backend dependencies:
+
+```sh
+npm --prefix server install
+```
+
+## 3) Configure Environment
+
+Create backend environment file:
+
+```sh
+cp server/.env.example server/.env
+```
+
+Default values are already suitable for local development:
+
+- `PORT=5000`
+- `CORS_ORIGIN=http://localhost:8080`
+- `MODEL_DIR=../Retail_Models_Onnx`
+
+## 4) Run the App (Development)
+
+Start backend and frontend in separate terminals.
+
+Terminal 1 (backend):
+
+```sh
+npm run server:dev
+```
+
+Terminal 2 (frontend):
+
+```sh
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+URLs:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- Frontend: `http://localhost:8080`
+- Backend: `http://localhost:5000`
+- Health check: `http://localhost:5000/health`
 
-**Use GitHub Codespaces**
+The frontend proxies `/api` and `/health` to the backend during local development.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 5) Build for Production
 
-## What technologies are used for this project?
+Frontend build:
 
-This project is built with:
+```sh
+npm run build
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Backend build:
 
-## How can I deploy this project?
+```sh
+npm run server:build
+```
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+Run built backend:
 
-## Can I connect a custom domain to my Lovable project?
+```sh
+npm run server:start
+```
 
-Yes, you can!
+## ONNX Models Required
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+These files must exist in `Retail_Models_Onnx/`:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- `demand_forecast_rf.onnx`
+- `trend_scaler.onnx`
+- `trend_kmeans.onnx`
+
+If models are stored elsewhere, update `MODEL_DIR` in `server/.env`.
+
+## Useful API Endpoints
+
+- `POST /api/bills/upload` (multipart field: `files`)
+- `POST /api/bills/process`
+- `GET /api/ml/forecast`
+- `GET /api/ml/trends`
+- `GET /api/ml/recommendations`
+- `GET /api/dashboard/stats`
+- `GET /api/sales/monthly`
+- `GET /api/sales/yearly`
+- `GET /api/sales/weekly`
+- `GET /api/sales/by-category`
+- `GET /api/stock/alerts`
+- `GET /api/stock/damaged`
+- `GET /api/insights/business`
+- `GET /api/insights/recommendations`
+
+## Quick Troubleshooting
+
+- If backend fails to start, verify ONNX files exist and `MODEL_DIR` is correct.
+- If frontend cannot reach API, ensure backend is running on port `5000`.
+- If CORS issues appear, confirm `CORS_ORIGIN` matches frontend URL.
