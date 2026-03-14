@@ -1,6 +1,8 @@
-import { businessExpansionSuggestions as suggestions } from "@/assets/fakeData";
+import { useInsightsRecommendations } from "@/hooks/useAnalyticsData";
 
 const BusinessExpansion = () => {
+  const { data } = useInsightsRecommendations();
+  const suggestions = data?.suggestions ?? [];
   return (
     <div className="bg-card rounded-xl p-5 border border-border shadow-sm">
       <h3 className="text-base font-semibold text-card-foreground mb-4">

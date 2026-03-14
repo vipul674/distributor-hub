@@ -1,12 +1,30 @@
 import { useState, useRef } from "react";
-import { Upload, FileText, X } from "lucide-react";
+import { Upload, FileText, X, CheckCircle, Loader2 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import { api, UploadResult } from "@/lib/api";
+import { toast } from "@/hooks/use-toast";
 
 const UploadBills = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
+
+  const { mutate: upload, isPending } = useMutation({
+    mutationFn: () => api.uploadBills(files),
+    onSuccess: (result) => {
+      setUploadResult(result);
+      setFiles([]);
+      queryClient.invalidateQueries();
+      toast({ title: "Bills uploaded successfully", description: `Parsed ${result.parsedRows} rows from ${result.uploadedFiles} file(s).` });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    },
+  });
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -82,6 +100,25 @@ const UploadBills = () => {
                 </button>
               </div>
             ))}
+            <button
+              onClick={() => upload()}
+              disabled={isPending}
+              className="mt-2 w-full flex items-center justify-center gap-2 px-6 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
+            >
+              {isPending ? <><Loader2 size={16} className="animate-spin" /> Uploading…</> : "Upload & Analyze"}
+            </button>
+          </div>
+        )}
+
+        {uploadResult && (
+          <div className="mt-6 flex items-start gap-3 bg-card rounded-xl p-4 border border-border">
+            <CheckCircle size={20} className="text-green-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-card-foreground">Analysis complete</p>
+              <p className="text-xs text-muted-foreground">
+                {uploadResult.uploadedFiles} file(s) · {uploadResult.parsedRows} new rows parsed · {uploadResult.totalRows} total records. Dashboard analytics have been updated.
+              </p>
+            </div>
           </div>
         )}
       </div>

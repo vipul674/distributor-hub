@@ -1,7 +1,9 @@
 import { Pill, Cookie } from "lucide-react";
-import { topRecommendations as recommendations } from "@/assets/fakeData";
+import { useInsightsRecommendations } from "@/hooks/useAnalyticsData";
 
 const TopRecommendations = () => {
+  const { data } = useInsightsRecommendations();
+  const recommendations = data?.recommendations ?? [];
   return (
     <div className="bg-card rounded-xl p-5 border border-border shadow-sm">
       <h3 className="text-base font-semibold text-card-foreground mb-4">Top Recommendations</h3>

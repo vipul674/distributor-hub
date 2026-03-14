@@ -2,7 +2,7 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { businessInsights, profitMargins, businessExpansionSuggestions } from "@/assets/fakeData";
+import { useBusinessInsights, useInsightsRecommendations } from "@/hooks/useAnalyticsData";
 
 const COLORS = [
   "hsl(280, 60%, 35%)", "hsl(280, 55%, 45%)", "hsl(280, 50%, 55%)",
@@ -10,6 +10,11 @@ const COLORS = [
 ];
 
 const BusinessInsights = () => {
+  const { data: insightsData } = useBusinessInsights();
+  const { data: recData } = useInsightsRecommendations();
+  const businessInsights = insightsData?.insights ?? [];
+  const profitMargins = insightsData?.profitMargins ?? [];
+  const businessExpansionSuggestions = recData?.suggestions ?? [];
   return (
     <DashboardLayout>
       <DashboardHeader userName="Sahith" />

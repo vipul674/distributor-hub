@@ -1,7 +1,8 @@
 import { AlertTriangle, Clock, ChevronRight } from "lucide-react";
-import { stockAlerts as alerts } from "@/assets/fakeData";
+import { useStockAlerts } from "@/hooks/useAnalyticsData";
 
 const StockAlerts = () => {
+  const { data: alerts = [] } = useStockAlerts();
   return (
     <div className="bg-card rounded-xl p-5 border border-border shadow-sm">
       <h3 className="text-base font-semibold text-card-foreground mb-4">Stock Alerts</h3>

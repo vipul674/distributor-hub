@@ -2,17 +2,25 @@ import { useState } from "react";
 import { Search, Package, ArrowDown, AlertTriangle, Plus, Edit, X } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { products as initialProducts, stockAlerts, lowStockRecommendations, damagedProducts, Product } from "@/assets/fakeData";
+import { products as initialProducts, Product } from "@/assets/fakeData";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { useStockAlerts, useDamagedProducts, useInsightsRecommendations } from "@/hooks/useAnalyticsData";
 
 const emptyProduct: Omit<Product, "id"> = {
   name: "", category: "", supplier: "", costPrice: 0, sellingPrice: 0, stockQty: 0, status: "in-stock",
 };
 
 const StockManagement = () => {
+  const { data: stockAlerts = [] } = useStockAlerts();
+  const { data: damagedProducts = [] } = useDamagedProducts();
+  const { data: recData } = useInsightsRecommendations();
+  const lowStockRecommendations = (recData?.recommendations ?? []).slice(0, 3).map((r) => ({
+    name: r.name,
+    restockQty: 30,
+  }));
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");

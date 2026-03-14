@@ -1,10 +1,11 @@
 import { AlertTriangle } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { damagedProducts } from "@/assets/fakeData";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useDamagedProducts } from "@/hooks/useAnalyticsData";
 
 const DamagedProducts = () => {
+  const { data: damagedProducts = [] } = useDamagedProducts();
   const totalDamaged = damagedProducts.reduce((sum, p) => sum + p.quantity, 0);
 
   return (

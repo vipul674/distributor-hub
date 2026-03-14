@@ -1,10 +1,12 @@
-import { monthlySalesData, yearlySalesData } from "@/assets/fakeData";
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
+import { useMonthlySales, useYearlySales } from "@/hooks/useAnalyticsData";
 
 const SalesOverviewChart = () => {
   const [view, setView] = useState<"monthly" | "yearly">("monthly");
-  const data = view === "monthly" ? monthlySalesData : yearlySalesData;
+  const { data: monthly = [] } = useMonthlySales();
+  const { data: yearly = [] } = useYearlySales();
+  const data = view === "monthly" ? monthly : yearly;
 
   const getBarColor = (index: number) => {
     const colors = [
