@@ -2,22 +2,47 @@ import { Router } from "express";
 import multer from "multer";
 import { parseBillFiles } from "../services/billParser.js";
 import { buildAnalyticsSnapshot } from "../services/analyticsSnapshot.js";
-import { OnnxService } from "../services/onnxService.js";
-import { DataStore } from "../services/store.js";
+import { Bill } from "../models/Bill.js";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-interface BillsRouterDeps {
-  store: DataStore;
-  onnxService: OnnxService;
-}
-
-export function createBillsRouter({ store, onnxService }: BillsRouterDeps): Router {
+export function createBillsRouter({ store, onnxService }) {
   const router = Router();
+
+  router.get("/recent", async (_req, res, next) => {
+    try {
+      const bills = await Bill.find().sort({ createdAt: -1 }).limit(20).select({ _id: 0, __v: 0 }).lean();
+      res.json(bills);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/manual", async (req, res, next) => {
+    try {
+      const payload = req.body ?? {};
+      const createdDoc = await Bill.create({
+        id: payload.id,
+        customer: payload.customer,
+        amount: payload.amount,
+        date: payload.date,
+        items: payload.items,
+      });
+      const created = await Bill.findOne({ id: createdDoc.id }).select({ _id: 0, __v: 0 }).lean();
+      res.status(201).json(created);
+    } catch (error) {
+      // Duplicate invoice ids should not crash UI flows
+      if (error?.code === 11000) {
+        res.status(409).json({ message: "Bill already exists" });
+        return;
+      }
+      next(error);
+    }
+  });
 
   router.post("/upload", upload.array("files", 20), async (req, res, next) => {
     try {
-      const files = (req.files ?? []) as Express.Multer.File[];
+      const files = req.files ?? [];
 
       if (files.length === 0) {
         res.status(400).json({ message: "No files provided. Use multipart field name 'files'." });
@@ -45,7 +70,9 @@ export function createBillsRouter({ store, onnxService }: BillsRouterDeps): Rout
         message: "Bills processed successfully",
         totalRecords: store.getAllBills().length,
         uploadedRecords: store.getUploadCount(),
-        categories: snapshot.monthlyCategory.map((row) => row.productCategory).filter((item, index, arr) => arr.indexOf(item) === index),
+        categories: snapshot.monthlyCategory
+          .map((row) => row.productCategory)
+          .filter((item, index, arr) => arr.indexOf(item) === index),
         forecastCount: snapshot.forecast.length,
       });
     } catch (error) {

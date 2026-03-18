@@ -1,14 +1,7 @@
 import { Router } from "express";
 import { buildAnalyticsSnapshot } from "../services/analyticsSnapshot.js";
-import { OnnxService } from "../services/onnxService.js";
-import { DataStore } from "../services/store.js";
 
-interface MlRouterDeps {
-  store: DataStore;
-  onnxService: OnnxService;
-}
-
-export function createMlRouter({ store, onnxService }: MlRouterDeps): Router {
+export function createMlRouter({ store, onnxService }) {
   const router = Router();
 
   router.get("/forecast", async (_req, res, next) => {

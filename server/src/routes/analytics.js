@@ -1,14 +1,7 @@
 import { Router } from "express";
 import { buildAnalyticsSnapshot } from "../services/analyticsSnapshot.js";
-import { OnnxService } from "../services/onnxService.js";
-import { DataStore } from "../services/store.js";
 
-interface AnalyticsRouterDeps {
-  store: DataStore;
-  onnxService: OnnxService;
-}
-
-export function createAnalyticsRouter({ store, onnxService }: AnalyticsRouterDeps): Router {
+export function createAnalyticsRouter({ store, onnxService }) {
   const router = Router();
 
   router.get("/dashboard/stats", async (_req, res, next) => {

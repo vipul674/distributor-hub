@@ -17,11 +17,11 @@ const HeroSection = () => {
       <div className="container mx-auto px-6 py-20 relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-8">
-            <h1 className="text-5xl lg:text-6xl font-bold text-foreground leading-tight">
+            <h1 className="text-5xl lg:text-6xl font-bold text-white leading-tight">
               AI for personalized insights
             </h1>
 
-            <p className="text-xl text-muted-foreground leading-relaxed max-w-lg">
+            <p className="text-xl text-white/70 leading-relaxed max-w-lg">
               Transform your business data into actionable insights with our
               AI-powered AutoML platform. No technical expertise required.
             </p>
@@ -30,7 +30,7 @@ const HeroSection = () => {
               <Button
                 variant="hero"
                 size="lg"
-                className="px-8 py-5 rounded-3xl text-lg"
+                className="px-8 py-5 rounded-3xl text-lg mt-5"
               >
                 Get started
               </Button>

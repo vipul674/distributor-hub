@@ -1,9 +1,13 @@
 import { createApp } from "./app.js";
 import { config } from "./config.js";
+import connectDB from "./db/connectDB.js";
+import { seedIfEmpty } from "./db/seed.js";
 import { OnnxService } from "./services/onnxService.js";
 import { DataStore } from "./services/store.js";
 
 async function bootstrap() {
+  await connectDB();
+  await seedIfEmpty();
   const store = new DataStore();
   const onnxService = new OnnxService(config.modelDir);
   await onnxService.initialize();

@@ -1,15 +1,5 @@
 import { seedDamagedProducts } from "../data/seedBills.js";
 import {
-  AnalyticsSnapshot,
-  BillRecord,
-  BusinessInsight,
-  ForecastResult,
-  ProfitMargin,
-  RecommendationResult,
-  TrendLabel,
-  TrendResult,
-} from "../types.js";
-import {
   buildForecastInputs,
   buildMonthlyCategory,
   buildMonthlySalesSeries,
@@ -19,21 +9,20 @@ import {
   buildYearlyCategory,
   buildYearlySalesSeries,
 } from "./aggregation.js";
-import { OnnxService } from "./onnxService.js";
 
-const TREND_MAP: Record<number, TrendLabel> = {
+const TREND_MAP = {
   0: "Stable",
   1: "Growing",
   2: "Declining",
 };
 
-const TREND_WEIGHT: Record<TrendLabel, number> = {
+const TREND_WEIGHT = {
   Growing: 1.3,
   Stable: 1,
   Declining: 0.6,
 };
 
-const CATEGORY_COST_RATIO: Record<string, number> = {
+const CATEGORY_COST_RATIO = {
   Beverages: 0.66,
   Snacks: 0.6,
   Groceries: 0.74,
@@ -42,7 +31,7 @@ const CATEGORY_COST_RATIO: Record<string, number> = {
   Electronics: 0.78,
 };
 
-function formatCurrency(value: number): string {
+function formatCurrency(value) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -50,12 +39,12 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-function clamp(value: number, min: number, max: number): number {
+function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-function getLatestMonthRevenue(monthlyCategory: AnalyticsSnapshot["monthlyCategory"]): number {
-  const latest = monthlyCategory.reduce<{ year: number; month: number } | null>((acc, row) => {
+function getLatestMonthRevenue(monthlyCategory) {
+  const latest = monthlyCategory.reduce((acc, row) => {
     if (!acc) return { year: row.year, month: row.month };
     if (row.year > acc.year || (row.year === acc.year && row.month > acc.month)) {
       return { year: row.year, month: row.month };
@@ -70,12 +59,12 @@ function getLatestMonthRevenue(monthlyCategory: AnalyticsSnapshot["monthlyCatego
     .reduce((sum, row) => sum + row.revenue, 0);
 }
 
-function buildBusinessInsights(records: BillRecord[], monthlySalesSeries: AnalyticsSnapshot["monthlySales"], stockAvailability: number): BusinessInsight[] {
+function buildBusinessInsights(records, monthlySalesSeries, stockAvailability) {
   const latestRevenue = monthlySalesSeries.at(-1)?.value ?? 0;
   const previousRevenue = monthlySalesSeries.at(-2)?.value ?? latestRevenue;
   const revenueGrowth = previousRevenue > 0 ? ((latestRevenue - previousRevenue) / previousRevenue) * 100 : 0;
 
-  const latestDate = records.reduce<Date | null>((acc, row) => {
+  const latestDate = records.reduce((acc, row) => {
     const date = new Date(row.date);
     if (!acc || date > acc) return date;
     return acc;
@@ -123,7 +112,7 @@ function buildBusinessInsights(records: BillRecord[], monthlySalesSeries: Analyt
   ];
 }
 
-function buildProfitMargins(yearlyCategory: AnalyticsSnapshot["yearlyCategory"]): ProfitMargin[] {
+function buildProfitMargins(yearlyCategory) {
   const latestYear = yearlyCategory.reduce((max, row) => Math.max(max, row.year), 0);
   const rows = yearlyCategory.filter((row) => row.year === latestYear);
 
@@ -136,11 +125,13 @@ function buildProfitMargins(yearlyCategory: AnalyticsSnapshot["yearlyCategory"])
     .sort((a, b) => b.margin - a.margin);
 }
 
-function buildDemandPredictions(recommendations: RecommendationResult[]): string[] {
-  return recommendations.slice(0, 4).map((item) => `Stock more ${item.productCategory}; projected demand ${item.predictedDemand.toFixed(0)} units next month`);
+function buildDemandPredictions(recommendations) {
+  return recommendations
+    .slice(0, 4)
+    .map((item) => `Stock more ${item.productCategory}; projected demand ${item.predictedDemand.toFixed(0)} units next month`);
 }
 
-function buildTopRecommendations(recommendations: RecommendationResult[]): Array<{ id: number; name: string; icon: "medical" | "snack" }> {
+function buildTopRecommendations(recommendations) {
   return recommendations.slice(0, 5).map((item, index) => ({
     id: index + 1,
     name: item.productCategory,
@@ -148,20 +139,20 @@ function buildTopRecommendations(recommendations: RecommendationResult[]): Array
   }));
 }
 
-function buildBusinessExpansionSuggestions(trends: TrendResult[]): string[] {
+function buildBusinessExpansionSuggestions(trends) {
   const growing = trends.filter((trend) => trend.trend === "Growing");
   const selected = growing.length > 0 ? growing : trends;
   return selected.slice(0, 5).map((trend) => `Expand ${trend.productCategory} distribution in high-demand retail zones`);
 }
 
-export async function buildAnalyticsSnapshot(records: BillRecord[], onnxService: OnnxService): Promise<AnalyticsSnapshot> {
+export async function buildAnalyticsSnapshot(records, onnxService) {
   const monthlyCategory = buildMonthlyCategory(records);
   const yearlyCategory = buildYearlyCategory(records);
 
   const forecastInputs = buildForecastInputs(monthlyCategory);
   const forecastValues = await onnxService.predictDemand(forecastInputs);
 
-  const forecast: ForecastResult[] = forecastInputs.map((input, index) => ({
+  const forecast = forecastInputs.map((input, index) => ({
     productCategory: input.productCategory,
     year: input.year,
     month: input.month,
@@ -170,7 +161,7 @@ export async function buildAnalyticsSnapshot(records: BillRecord[], onnxService:
 
   const trendFeatures = buildTrendFeatures(yearlyCategory);
   const clusters = await onnxService.classifyTrend(trendFeatures);
-  const trends: TrendResult[] = trendFeatures.map((feature, index) => ({
+  const trends = trendFeatures.map((feature, index) => ({
     productCategory: feature.productCategory,
     avgQuantity: Number(feature.avgQuantity.toFixed(3)),
     volatility: Number(feature.volatility.toFixed(3)),
@@ -180,7 +171,7 @@ export async function buildAnalyticsSnapshot(records: BillRecord[], onnxService:
 
   const trendByCategory = new Map(trends.map((trend) => [trend.productCategory, trend]));
 
-  const recommendations: RecommendationResult[] = forecast
+  const recommendations = forecast
     .map((row) => {
       const trend = trendByCategory.get(row.productCategory)?.trend ?? "Stable";
       const trendWeight = TREND_WEIGHT[trend];
@@ -202,7 +193,7 @@ export async function buildAnalyticsSnapshot(records: BillRecord[], onnxService:
 
   const lowStockAlerts = recommendations.slice(0, 2).map((row, index) => ({
     id: index + 1,
-    type: "low-stock" as const,
+    type: "low-stock",
     message: `Low stock risk: ${row.productCategory} may need replenishment soon`,
   }));
 
@@ -210,7 +201,7 @@ export async function buildAnalyticsSnapshot(records: BillRecord[], onnxService:
     ...lowStockAlerts,
     {
       id: lowStockAlerts.length + 1,
-      type: "expiring" as const,
+      type: "expiring",
       message: "Review warehouse expiry batches for fragile goods",
     },
   ];

@@ -29,3 +29,9 @@ export const useBusinessInsights = () =>
 
 export const useInsightsRecommendations = () =>
   useQuery({ queryKey: ["insights", "recommendations"], queryFn: api.getInsightsRecommendations, staleTime: STALE });
+
+export const useProducts = () =>
+  useQuery({ queryKey: ["products"], queryFn: api.getProducts, staleTime: STALE });
+
+export const useRecentBills = () =>
+  useQuery({ queryKey: ["bills", "recent"], queryFn: api.getRecentBills, staleTime: STALE });

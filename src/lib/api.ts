@@ -40,6 +40,25 @@ export interface BusinessInsight {
 
 export interface ProfitMargin { category: string; margin: number }
 
+export interface Product {
+  id: number;
+  name: string;
+  category: string;
+  supplier: string;
+  costPrice: number;
+  sellingPrice: number;
+  stockQty: number;
+  status: "in-stock" | "low-stock";
+}
+
+export interface RecentBill {
+  id: string;
+  customer: string;
+  amount: number;
+  date: string;
+  items: number;
+}
+
 export interface BusinessInsightsResponse {
   insights: BusinessInsight[];
   profitMargins: ProfitMargin[];
@@ -70,6 +89,41 @@ export const api = {
   getDamagedProducts: () => get<DamagedProduct[]>("/stock/damaged"),
   getBusinessInsights: () => get<BusinessInsightsResponse>("/insights/business"),
   getInsightsRecommendations: () => get<InsightsRecommendationsResponse>("/insights/recommendations"),
+
+  getProducts: () => get<Product[]>("/products"),
+  createProduct: async (payload: Omit<Product, "id">): Promise<Product> => {
+    const res = await fetch(`${BASE}/products`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Create product failed: ${res.status}`);
+    return res.json() as Promise<Product>;
+  },
+  updateProduct: async (id: number, payload: Partial<Omit<Product, "id">>): Promise<Product> => {
+    const res = await fetch(`${BASE}/products/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Update product failed: ${res.status}`);
+    return res.json() as Promise<Product>;
+  },
+  deleteProduct: async (id: number): Promise<void> => {
+    const res = await fetch(`${BASE}/products/${id}`, { method: "DELETE" });
+    if (!res.ok && res.status !== 204) throw new Error(`Delete product failed: ${res.status}`);
+  },
+
+  getRecentBills: () => get<RecentBill[]>("/bills/recent"),
+  createManualBill: async (payload: RecentBill): Promise<RecentBill> => {
+    const res = await fetch(`${BASE}/bills/manual`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Create bill failed: ${res.status}`);
+    return res.json() as Promise<RecentBill>;
+  },
 
   uploadBills: async (files: File[]): Promise<UploadResult> => {
     const formData = new FormData();

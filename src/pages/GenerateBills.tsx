@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { products as allProducts, recentBills as initialBills } from "@/assets/fakeData";
 import { toast } from "@/hooks/use-toast";
+import { api, RecentBill } from "@/lib/api";
+import { useProducts, useRecentBills } from "@/hooks/useAnalyticsData";
 
 interface BillItem {
   product: string;
@@ -10,18 +11,20 @@ interface BillItem {
   price: number;
 }
 
-interface Bill {
-  id: string;
-  customer: string;
-  amount: number;
-  date: string;
-  items: number;
-}
-
 const GenerateBills = () => {
+  const { data: allProducts = [] } = useProducts();
+  const { data: recentBills = [] } = useRecentBills();
   const [customerName, setCustomerName] = useState("");
   const [items, setItems] = useState<BillItem[]>([{ product: "", qty: 1, price: 0 }]);
-  const [bills, setBills] = useState<Bill[]>(initialBills);
+  const [bills, setBills] = useState<RecentBill[]>([]);
+
+  useEffect(() => {
+    if (bills.length === 0 && recentBills.length > 0) {
+      setBills(recentBills);
+    }
+    // seed only once when empty
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recentBills]);
 
   const addItem = () => setItems([...items, { product: "", qty: 1, price: 0 }]);
 
@@ -63,7 +66,7 @@ const GenerateBills = () => {
     }
 
     const billTotal = validItems.reduce((sum, item) => sum + item.qty * item.price, 0);
-    const newBill: Bill = {
+    const newBill: RecentBill = {
       id: `INV-${String(bills.length + 1).padStart(3, "0")}`,
       customer: customerName,
       amount: billTotal,
@@ -72,6 +75,7 @@ const GenerateBills = () => {
     };
 
     setBills([newBill, ...bills]);
+    api.createManualBill(newBill).catch(() => {});
     setCustomerName("");
     setItems([{ product: "", qty: 1, price: 0 }]);
 

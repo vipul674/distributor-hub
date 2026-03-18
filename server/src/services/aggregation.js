@@ -1,33 +1,23 @@
-import {
-  BillRecord,
-  ForecastInput,
-  MonthlyCategoryRow,
-  SalesByCategoryPoint,
-  SalesPoint,
-  WeeklySalesPoint,
-  YearlyCategoryRow,
-} from "../types.js";
-
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function toYearMonth(dateIso: string): { year: number; month: number } {
+function toYearMonth(dateIso) {
   const date = new Date(dateIso);
   return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1 };
 }
 
-function sortMonthly(a: MonthlyCategoryRow, b: MonthlyCategoryRow): number {
+function sortMonthly(a, b) {
   if (a.productCategory !== b.productCategory) return a.productCategory.localeCompare(b.productCategory);
   if (a.year !== b.year) return a.year - b.year;
   return a.month - b.month;
 }
 
-function sortYearly(a: YearlyCategoryRow, b: YearlyCategoryRow): number {
+function sortYearly(a, b) {
   if (a.productCategory !== b.productCategory) return a.productCategory.localeCompare(b.productCategory);
   return a.year - b.year;
 }
 
-export function buildMonthlyCategory(records: BillRecord[]): MonthlyCategoryRow[] {
-  const grouped = new Map<string, MonthlyCategoryRow>();
+export function buildMonthlyCategory(records) {
+  const grouped = new Map();
 
   records.forEach((record) => {
     const { year, month } = toYearMonth(record.date);
@@ -52,8 +42,8 @@ export function buildMonthlyCategory(records: BillRecord[]): MonthlyCategoryRow[
   return [...grouped.values()].sort(sortMonthly);
 }
 
-export function buildYearlyCategory(records: BillRecord[]): YearlyCategoryRow[] {
-  const grouped = new Map<string, YearlyCategoryRow>();
+export function buildYearlyCategory(records) {
+  const grouped = new Map();
 
   records.forEach((record) => {
     const { year } = toYearMonth(record.date);
@@ -77,8 +67,8 @@ export function buildYearlyCategory(records: BillRecord[]): YearlyCategoryRow[] 
   return [...grouped.values()].sort(sortYearly);
 }
 
-export function buildForecastInputs(monthlyCategory: MonthlyCategoryRow[]): ForecastInput[] {
-  const categoryMap = new Map<string, MonthlyCategoryRow[]>();
+export function buildForecastInputs(monthlyCategory) {
+  const categoryMap = new Map();
 
   monthlyCategory.forEach((row) => {
     const list = categoryMap.get(row.productCategory) ?? [];
@@ -86,7 +76,7 @@ export function buildForecastInputs(monthlyCategory: MonthlyCategoryRow[]): Fore
     categoryMap.set(row.productCategory, list);
   });
 
-  const inputs: ForecastInput[] = [];
+  const inputs = [];
 
   categoryMap.forEach((rows, productCategory) => {
     const sortedRows = [...rows].sort((a, b) => {
@@ -121,8 +111,8 @@ export function buildForecastInputs(monthlyCategory: MonthlyCategoryRow[]): Fore
   return inputs;
 }
 
-export function buildTrendFeatures(yearlyCategory: YearlyCategoryRow[]): Array<{ productCategory: string; avgQuantity: number; volatility: number }> {
-  const categoryMap = new Map<string, number[]>();
+export function buildTrendFeatures(yearlyCategory) {
+  const categoryMap = new Map();
 
   yearlyCategory.forEach((row) => {
     const list = categoryMap.get(row.productCategory) ?? [];
@@ -141,8 +131,8 @@ export function buildTrendFeatures(yearlyCategory: YearlyCategoryRow[]): Array<{
   });
 }
 
-export function buildMonthlySalesSeries(monthlyCategory: MonthlyCategoryRow[]): SalesPoint[] {
-  const grouped = new Map<string, number>();
+export function buildMonthlySalesSeries(monthlyCategory) {
+  const grouped = new Map();
 
   monthlyCategory.forEach((row) => {
     const key = `${row.year}-${String(row.month).padStart(2, "0")}`;
@@ -161,8 +151,8 @@ export function buildMonthlySalesSeries(monthlyCategory: MonthlyCategoryRow[]): 
     });
 }
 
-export function buildYearlySalesSeries(yearlyCategory: YearlyCategoryRow[]): SalesPoint[] {
-  const grouped = new Map<number, number>();
+export function buildYearlySalesSeries(yearlyCategory) {
+  const grouped = new Map();
 
   yearlyCategory.forEach((row) => {
     grouped.set(row.year, (grouped.get(row.year) ?? 0) + row.revenue);
@@ -173,8 +163,8 @@ export function buildYearlySalesSeries(yearlyCategory: YearlyCategoryRow[]): Sal
     .map(([year, value]) => ({ name: String(year), value: Number(value.toFixed(2)) }));
 }
 
-export function buildWeeklySalesSeries(monthlyCategory: MonthlyCategoryRow[]): WeeklySalesPoint[] {
-  const latestMonth = monthlyCategory.reduce<MonthlyCategoryRow | null>((acc, row) => {
+export function buildWeeklySalesSeries(monthlyCategory) {
+  const latestMonth = monthlyCategory.reduce((acc, row) => {
     if (!acc) return row;
     if (row.year > acc.year) return row;
     if (row.year === acc.year && row.month > acc.month) return row;
@@ -194,9 +184,9 @@ export function buildWeeklySalesSeries(monthlyCategory: MonthlyCategoryRow[]): W
   }));
 }
 
-export function buildSalesByCategory(monthlyCategory: MonthlyCategoryRow[]): SalesByCategoryPoint[] {
+export function buildSalesByCategory(monthlyCategory) {
   const latestYear = monthlyCategory.reduce((acc, row) => Math.max(acc, row.year), 0);
-  const grouped = new Map<string, number>();
+  const grouped = new Map();
 
   monthlyCategory
     .filter((row) => row.year === latestYear)

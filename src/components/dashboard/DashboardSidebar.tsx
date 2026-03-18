@@ -21,9 +21,9 @@ const menuItems = [
 
 const DashboardSidebar = () => {
   return (
-    <aside className="w-60 min-h-screen bg-sidebar flex flex-col">
+    <aside className="w-60 min-h-screen bg-[#241824] flex flex-col">
       <div className="p-6">
-        <h1 className="text-2xl font-bold text-sidebar-foreground">SupplyDesk</h1>
+        <h1 className="text-2xl font-bold text-white">SupplyDesk</h1>
       </div>
       
       <nav className="flex-1 px-4">
@@ -32,8 +32,8 @@ const DashboardSidebar = () => {
             <li key={item.title}>
               <NavLink
                 to={item.url}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
-                activeClassName="bg-sidebar-accent text-sidebar-foreground"
+                className="flex items-center gap-3 px-4 py-3 rounded text-white/70 hover:bg-[#730073] hover:text-white transition-colors"
+                activeClassName="bg-[#730073] text-white"
               >
                 <item.icon size={20} />
                 <span className="text-sm font-medium">{item.title}</span>

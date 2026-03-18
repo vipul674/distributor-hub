@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, Package, ArrowDown, AlertTriangle, Plus, Edit, X } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { products as initialProducts, Product } from "@/assets/fakeData";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { useStockAlerts, useDamagedProducts, useInsightsRecommendations } from "@/hooks/useAnalyticsData";
+import { api, Product } from "@/lib/api";
+import { useStockAlerts, useDamagedProducts, useInsightsRecommendations, useProducts } from "@/hooks/useAnalyticsData";
 
 const emptyProduct: Omit<Product, "id"> = {
   name: "", category: "", supplier: "", costPrice: 0, sellingPrice: 0, stockQty: 0, status: "in-stock",
@@ -17,17 +17,27 @@ const StockManagement = () => {
   const { data: stockAlerts = [] } = useStockAlerts();
   const { data: damagedProducts = [] } = useDamagedProducts();
   const { data: recData } = useInsightsRecommendations();
+  const { data: fetchedProducts = [] } = useProducts();
   const lowStockRecommendations = (recData?.recommendations ?? []).slice(0, 3).map((r) => ({
     name: r.name,
     restockQty: 30,
   }));
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
   const [statusFilter, setStatusFilter] = useState("All");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [form, setForm] = useState(emptyProduct);
+
+  // keep existing local editing behavior, but seed list from backend
+  useEffect(() => {
+    if (products.length === 0 && fetchedProducts.length > 0) {
+      setProducts(fetchedProducts);
+    }
+    // only seed when local list is empty
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchedProducts]);
 
   const categories = ["All Categories", ...new Set(products.map((p) => p.category))];
 
@@ -60,11 +70,18 @@ const StockManagement = () => {
     const status = form.stockQty < 20 ? "low-stock" as const : "in-stock" as const;
 
     if (editingProduct) {
-      setProducts(products.map((p) => p.id === editingProduct.id ? { ...p, ...form, status } : p));
+      const updated = { ...editingProduct, ...form, status };
+      setProducts(products.map((p) => p.id === editingProduct.id ? updated : p));
+      const { id: _id, ...updates } = updated;
+      api.updateProduct(editingProduct.id, updates).catch(() => {});
       toast({ title: "Product Updated", description: `${form.name} has been updated` });
     } else {
-      const newProduct: Product = { ...form, status, id: Math.max(...products.map((p) => p.id)) + 1 };
+      const tempId = -Date.now();
+      const newProduct: Product = { ...form, status, id: tempId };
       setProducts([...products, newProduct]);
+      api.createProduct({ ...form, status }).then((created) => {
+        setProducts((prev) => prev.map((p) => (p.id === tempId ? created : p)));
+      }).catch(() => {});
       toast({ title: "Product Added", description: `${form.name} has been added` });
     }
     setDialogOpen(false);

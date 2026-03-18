@@ -1,9 +1,8 @@
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { recentBills } from "@/assets/fakeData";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useWeeklySales, useSalesByCategory } from "@/hooks/useAnalyticsData";
+import { useWeeklySales, useSalesByCategory, useRecentBills } from "@/hooks/useAnalyticsData";
 
 const COLORS = [
   "hsl(280, 60%, 35%)", "hsl(280, 55%, 45%)", "hsl(280, 50%, 55%)",
@@ -13,6 +12,7 @@ const COLORS = [
 const SalesAnalysis = () => {
   const { data: weeklySalesData = [] } = useWeeklySales();
   const { data: salesByCategory = [] } = useSalesByCategory();
+  const { data: recentBills = [] } = useRecentBills();
   return (
     <DashboardLayout>
       <DashboardHeader userName="Sahith" />

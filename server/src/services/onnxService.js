@@ -1,19 +1,18 @@
 import fs from "node:fs";
 import path from "node:path";
 import * as ort from "onnxruntime-node";
-import { ForecastInput } from "../types.js";
 
-function extractNumbers(tensor: ort.Tensor): number[] {
-  const values = Array.from(tensor.data as ArrayLike<number | bigint>);
+function extractNumbers(tensor) {
+  const values = Array.from(tensor.data);
   return values.map((value) => (typeof value === "bigint" ? Number(value) : Number(value)));
 }
 
-function reshape2D(flat: number[], columns: number): number[][] {
+function reshape2D(flat, columns) {
   if (columns <= 0 || flat.length % columns !== 0) {
     throw new Error(`Cannot reshape array of length ${flat.length} into columns=${columns}`);
   }
 
-  const rows: number[][] = [];
+  const rows = [];
   for (let index = 0; index < flat.length; index += columns) {
     rows.push(flat.slice(index, index + columns));
   }
@@ -21,16 +20,14 @@ function reshape2D(flat: number[], columns: number): number[][] {
 }
 
 export class OnnxService {
-  private readonly modelDir: string;
-  private demandSession: ort.InferenceSession | null = null;
-  private trendScalerSession: ort.InferenceSession | null = null;
-  private trendKmeansSession: ort.InferenceSession | null = null;
-
-  constructor(modelDir: string) {
+  constructor(modelDir) {
     this.modelDir = modelDir;
+    this.demandSession = null;
+    this.trendScalerSession = null;
+    this.trendKmeansSession = null;
   }
 
-  public async initialize(): Promise<void> {
+  async initialize() {
     const demandPath = path.join(this.modelDir, "demand_forecast_rf.onnx");
     const trendScalerPath = path.join(this.modelDir, "trend_scaler.onnx");
     const trendKmeansPath = path.join(this.modelDir, "trend_kmeans.onnx");
@@ -46,7 +43,7 @@ export class OnnxService {
     this.trendKmeansSession = await ort.InferenceSession.create(trendKmeansPath);
   }
 
-  public async predictDemand(inputs: ForecastInput[]): Promise<number[]> {
+  async predictDemand(inputs) {
     if (!this.demandSession) throw new Error("Demand model is not initialized");
     if (inputs.length === 0) return [];
 
@@ -54,7 +51,7 @@ export class OnnxService {
     const flat = new Float32Array(matrix.flat());
     const tensor = new ort.Tensor("float32", flat, [inputs.length, 5]);
 
-    const feeds: Record<string, ort.Tensor> = {
+    const feeds = {
       [this.demandSession.inputNames[0]]: tensor,
     };
 
@@ -68,7 +65,7 @@ export class OnnxService {
     return extractNumbers(output).map((value) => Number(value.toFixed(3)));
   }
 
-  public async classifyTrend(features: Array<{ avgQuantity: number; volatility: number }>): Promise<number[]> {
+  async classifyTrend(features) {
     if (!this.trendScalerSession || !this.trendKmeansSession) {
       throw new Error("Trend models are not initialized");
     }
@@ -81,7 +78,7 @@ export class OnnxService {
       [features.length, 2]
     );
 
-    const scalerFeeds: Record<string, ort.Tensor> = {
+    const scalerFeeds = {
       [this.trendScalerSession.inputNames[0]]: featureTensor,
     };
 
@@ -95,7 +92,7 @@ export class OnnxService {
     const scaledMatrix = reshape2D(extractNumbers(scaledOutput), 2);
     const kmeansInput = new ort.Tensor("float32", Float32Array.from(scaledMatrix.flat()), [features.length, 2]);
 
-    const kmeansFeeds: Record<string, ort.Tensor> = {
+    const kmeansFeeds = {
       [this.trendKmeansSession.inputNames[0]]: kmeansInput,
     };
 

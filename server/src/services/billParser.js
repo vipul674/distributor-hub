@@ -1,17 +1,16 @@
 import path from "node:path";
 import XLSX from "xlsx";
-import { BillRecord } from "../types.js";
 
 const CATEGORY_KEYS = ["product category", "product_category", "category", "productcategory"];
 const QUANTITY_KEYS = ["quantity", "qty", "units"];
 const AMOUNT_KEYS = ["total amount", "total_amount", "amount", "revenue", "total"];
 const DATE_KEYS = ["date", "bill date", "invoice date", "transaction date", "bill_date"];
 
-function normalizeKey(key: string): string {
+function normalizeKey(key) {
   return key.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-function parseNumber(value: unknown): number | null {
+function parseNumber(value) {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value === "string") {
     const cleaned = value.replace(/,/g, "").trim();
@@ -21,7 +20,7 @@ function parseNumber(value: unknown): number | null {
   return null;
 }
 
-function parseDateValue(value: unknown): string | null {
+function parseDateValue(value) {
   if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
 
   if (typeof value === "number") {
@@ -39,8 +38,8 @@ function parseDateValue(value: unknown): string | null {
   return null;
 }
 
-function getValueByAliases(row: Record<string, unknown>, aliases: string[]): unknown {
-  const normalizedMap = new Map<string, unknown>();
+function getValueByAliases(row, aliases) {
+  const normalizedMap = new Map();
   Object.entries(row).forEach(([key, value]) => normalizedMap.set(normalizeKey(key), value));
 
   for (const alias of aliases) {
@@ -53,7 +52,7 @@ function getValueByAliases(row: Record<string, unknown>, aliases: string[]): unk
   return null;
 }
 
-function mapRowToBillRecord(row: Record<string, unknown>, sourceFile: string): BillRecord | null {
+function mapRowToBillRecord(row, sourceFile) {
   const rawDate = getValueByAliases(row, DATE_KEYS);
   const rawCategory = getValueByAliases(row, CATEGORY_KEYS);
   const rawQuantity = getValueByAliases(row, QUANTITY_KEYS);
@@ -64,7 +63,7 @@ function mapRowToBillRecord(row: Record<string, unknown>, sourceFile: string): B
   const parsedAmount = parseNumber(rawAmount);
   const productCategory = typeof rawCategory === "string" ? rawCategory.trim() : "";
 
-  if (!parsedDate || !productCategory || !parsedQuantity || !parsedAmount) return null;
+  if (!parsedDate || !productCategory || parsedQuantity === null || parsedAmount === null) return null;
   if (parsedQuantity <= 0 || parsedAmount <= 0) return null;
 
   return {
@@ -76,8 +75,8 @@ function mapRowToBillRecord(row: Record<string, unknown>, sourceFile: string): B
   };
 }
 
-export function parseBillFiles(files: Express.Multer.File[]): BillRecord[] {
-  const records: BillRecord[] = [];
+export function parseBillFiles(files) {
+  const records = [];
 
   files.forEach((file) => {
     const extension = path.extname(file.originalname).toLowerCase();
@@ -88,7 +87,7 @@ export function parseBillFiles(files: Express.Multer.File[]): BillRecord[] {
     const firstSheetName = workbook.SheetNames[0];
     if (!firstSheetName) return;
 
-    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets[firstSheetName], {
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
       defval: null,
       raw: false,
     });

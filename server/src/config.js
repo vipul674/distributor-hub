@@ -2,23 +2,25 @@ import dotenv from "dotenv";
 import fs from "node:fs";
 import path from "node:path";
 
+// Prefer env/.env (requested structure), but also support server/.env
+dotenv.config({ path: path.resolve(process.cwd(), "env/.env") });
 dotenv.config();
 
-function resolveModelDir(): string {
+function resolveModelDir() {
   const envDir = process.env.MODEL_DIR ? path.resolve(process.cwd(), process.env.MODEL_DIR) : undefined;
   const candidates = [
     envDir,
     path.resolve(process.cwd(), "Retail_Models_Onnx"),
     path.resolve(process.cwd(), "../Retail_Models_Onnx"),
     path.resolve(process.cwd(), "../../Retail_Models_Onnx"),
-  ].filter((candidate): candidate is string => Boolean(candidate));
+  ].filter(Boolean);
 
   const requiredModel = "demand_forecast_rf.onnx";
   const found = candidates.find((candidate) => fs.existsSync(path.join(candidate, requiredModel)));
 
   if (!found) {
     throw new Error(
-      `Unable to resolve model directory. Checked: ${candidates.join(", ")}. Set MODEL_DIR in server/.env.`
+      `Unable to resolve model directory. Checked: ${candidates.join(", ")}. Set MODEL_DIR in server/.env or server/env/.env.`
     );
   }
 

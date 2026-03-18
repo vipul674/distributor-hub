@@ -1,8 +1,6 @@
-import { BillRecord, DamagedProduct } from "../types.js";
-
 const CATEGORIES = ["Beverages", "Snacks", "Groceries", "Personal Care", "Health", "Electronics"];
 
-const BASE_QUANTITY: Record<string, number> = {
+const BASE_QUANTITY = {
   Beverages: 140,
   Snacks: 125,
   Groceries: 110,
@@ -11,7 +9,7 @@ const BASE_QUANTITY: Record<string, number> = {
   Electronics: 60,
 };
 
-const PRICE_PER_UNIT: Record<string, number> = {
+const PRICE_PER_UNIT = {
   Beverages: 34,
   Snacks: 29,
   Groceries: 38,
@@ -20,7 +18,7 @@ const PRICE_PER_UNIT: Record<string, number> = {
   Electronics: 120,
 };
 
-const GROWTH_FACTOR: Record<string, number> = {
+const GROWTH_FACTOR = {
   Beverages: 1.035,
   Snacks: 1.02,
   Groceries: 1.015,
@@ -31,14 +29,14 @@ const GROWTH_FACTOR: Record<string, number> = {
 
 const MONTHLY_SEASONAL = [0.88, 0.9, 0.95, 1.0, 1.06, 1.1, 1.16, 1.14, 1.05, 1.0, 0.96, 1.2];
 
-function round2(value: number): number {
+function round2(value) {
   return Number(value.toFixed(2));
 }
 
-export function generateSeedBills(): BillRecord[] {
+export function generateSeedBills() {
   const startYear = 2023;
   const endYear = 2025;
-  const records: BillRecord[] = [];
+  const records = [];
 
   for (let year = startYear; year <= endYear; year += 1) {
     for (let month = 1; month <= 12; month += 1) {
@@ -63,7 +61,7 @@ export function generateSeedBills(): BillRecord[] {
   return records;
 }
 
-export const seedDamagedProducts: DamagedProduct[] = [
+export const seedDamagedProducts = [
   { id: 1, name: "Cracked Bottles", category: "Beverages", quantity: 6, reason: "Transit breakage", date: "2025-12-08" },
   { id: 2, name: "Expired Snack Packs", category: "Snacks", quantity: 8, reason: "Expired inventory", date: "2025-12-06" },
   { id: 3, name: "Torn Rice Bags", category: "Groceries", quantity: 4, reason: "Storage handling", date: "2025-12-05" },
