@@ -122,7 +122,8 @@ export function buildTrendFeatures(yearlyCategory) {
 
   return [...categoryMap.entries()].map(([productCategory, quantities]) => {
     const avgQuantity = quantities.reduce((acc, item) => acc + item, 0) / quantities.length;
-    const variance = quantities.reduce((acc, item) => acc + (item - avgQuantity) ** 2, 0) / quantities.length;
+    const denominator = quantities.length > 1 ? quantities.length - 1 : 1;
+    const variance = quantities.reduce((acc, item) => acc + (item - avgQuantity) ** 2, 0) / denominator;
     return {
       productCategory,
       avgQuantity,

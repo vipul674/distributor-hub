@@ -79,6 +79,14 @@ export interface UploadResult {
   uploadedRows: number;
 }
 
+export interface ProcessResult {
+  message: string;
+  totalRecords: number;
+  uploadedRecords: number;
+  categories: string[];
+  forecastCount: number;
+}
+
 export const api = {
   getDashboardStats: () => get<DashboardStats>("/dashboard/stats"),
   getMonthlySales: () => get<SalesPoint[]>("/sales/monthly"),
@@ -133,8 +141,9 @@ export const api = {
     return res.json() as Promise<UploadResult>;
   },
 
-  processBills: async (): Promise<void> => {
+  processBills: async (): Promise<ProcessResult> => {
     const res = await fetch(`${BASE}/bills/process`, { method: "POST" });
     if (!res.ok) throw new Error(`Process failed: ${res.status}`);
+    return res.json() as Promise<ProcessResult>;
   },
 };

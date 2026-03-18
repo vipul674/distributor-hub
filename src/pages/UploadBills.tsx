@@ -14,7 +14,11 @@ const UploadBills = () => {
   const queryClient = useQueryClient();
 
   const { mutate: upload, isPending } = useMutation({
-    mutationFn: () => api.uploadBills(files),
+    mutationFn: async () => {
+      const uploadRes = await api.uploadBills(files);
+      await api.processBills();
+      return uploadRes;
+    },
     onSuccess: (result) => {
       setUploadResult(result);
       setFiles([]);

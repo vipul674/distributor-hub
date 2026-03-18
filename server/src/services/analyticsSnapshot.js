@@ -1,4 +1,3 @@
-import { seedDamagedProducts } from "../data/seedBills.js";
 import {
   buildForecastInputs,
   buildMonthlyCategory,
@@ -189,7 +188,7 @@ export async function buildAnalyticsSnapshot(records, onnxService) {
 
   const latestMonthRevenue = getLatestMonthRevenue(monthlyCategory);
   const stockAvailability = Math.max(1, Math.round(monthlyCategory.slice(-6).reduce((sum, row) => sum + row.quantity, 0) / 2));
-  const damagedStock = seedDamagedProducts.reduce((sum, row) => sum + row.quantity, 0);
+  const damagedStock = 0;
 
   const lowStockAlerts = recommendations.slice(0, 2).map((row, index) => ({
     id: index + 1,
@@ -232,7 +231,7 @@ export async function buildAnalyticsSnapshot(records, onnxService) {
     weeklySales,
     salesByCategory,
     stockAlerts,
-    damagedProducts: seedDamagedProducts,
+    damagedProducts: [],
     demandPredictions,
     topRecommendations,
     businessInsights,
