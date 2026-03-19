@@ -17,7 +17,7 @@ const BusinessInsights = () => {
   const businessExpansionSuggestions = recData?.suggestions ?? [];
   return (
     <DashboardLayout>
-      <DashboardHeader userName="Sahith" />
+      <DashboardHeader userName="Distributor" />
 
       <h1 className="text-2xl font-bold text-foreground mb-6">Business Insights</h1>
 
@@ -44,7 +44,7 @@ const BusinessInsights = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Profit Margins Chart */}
         <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
-          <h3 className="text-lg font-semibold text-card-foreground mb-4">Profit Margins by Category</h3>
+          <h3 className="text-lg font-semibold text-card-foreground mb-4">Estimated Gross Margin by Category</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={profitMargins} layout="vertical">

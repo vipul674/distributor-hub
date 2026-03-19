@@ -15,19 +15,19 @@ const SalesAnalysis = () => {
   const { data: recentBills = [] } = useRecentBills();
   return (
     <DashboardLayout>
-      <DashboardHeader userName="Sahith" />
+      <DashboardHeader userName="Distributor" />
 
       <h1 className="text-2xl font-bold text-foreground mb-6">Sales Analysis</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Weekly Sales Chart */}
         <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
-          <h3 className="text-lg font-semibold text-card-foreground mb-4">Weekly Sales</h3>
+          <h3 className="text-lg font-semibold text-card-foreground mb-4">Sales by Weekday</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={weeklySalesData}>
                 <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "hsl(0,0%,45%)", fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: "hsl(0,0%,45%)", fontSize: 12 }} tickFormatter={(v) => `${v / 1000}k`} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: "hsl(0,0%,45%)", fontSize: 12 }} tickFormatter={(v) => `₹${Math.round(v / 1000)}k`} />
                 <Bar dataKey="sales" radius={[6, 6, 0, 0]} maxBarSize={40}>
                   {weeklySalesData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Bar>
@@ -38,7 +38,7 @@ const SalesAnalysis = () => {
 
         {/* Sales by Category */}
         <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
-          <h3 className="text-lg font-semibold text-card-foreground mb-4">Sales by Category</h3>
+          <h3 className="text-lg font-semibold text-card-foreground mb-4">Category Mix for the Reporting Month</h3>
           <div className="h-64 flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>

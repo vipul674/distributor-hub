@@ -3,7 +3,7 @@
 Distributor Hub is a full-stack analytics app for retail distributors.
 
 - Frontend: React + Vite + TypeScript + Tailwind + shadcn/ui
-- Backend: Express + TypeScript + ONNX Runtime (`onnxruntime-node`)
+- Backend: Express + JavaScript + ONNX Runtime (`onnxruntime-node`)
 - ML Models: demand forecast + trend classification + recommendation scoring
 
 ## Prerequisites
@@ -44,21 +44,33 @@ npm --prefix server install
 
 ## 3) Configure Environment
 
-Create backend environment file:
+Create the backend environment file. The preferred location is `server/env/.env`, though `server/.env` is also supported:
 
 ```sh
-cp server/.env.example server/.env
+cp server/env/.env.example server/env/.env
 ```
 
-Default values are already suitable for local development:
+Set these values for local development:
 
 - `PORT=5000`
 - `CORS_ORIGIN=http://localhost:8080`
 - `MODEL_DIR=../Retail_Models_Onnx`
+- `DATA_MODE=auto`
+- `MONGODB_URI=<your MongoDB connection string>`
+- `MONGODB_DB_NAME=supplyDesk`
+- `JWT_SECRET=<your JWT secret>`
+
+With `DATA_MODE=auto`, the backend will use MongoDB whenever it is configured and only fall back to in-memory sample data when MongoDB is unavailable. Mongo-backed mode does not auto-seed demo products, bills, or analytics data.
 
 ## 4) Run the App (Development)
 
-Start backend and frontend in separate terminals.
+Start the full app from the project root:
+
+```sh
+npm run dev
+```
+
+If you want to run them separately, use these commands.
 
 Terminal 1 (backend):
 
@@ -86,12 +98,6 @@ Frontend build:
 
 ```sh
 npm run build
-```
-
-Backend build:
-
-```sh
-npm run server:build
 ```
 
 Run built backend:
@@ -129,6 +135,7 @@ If models are stored elsewhere, update `MODEL_DIR` in `server/.env`.
 
 ## Quick Troubleshooting
 
+- If you cloned the repo before this cleanup, replace any committed env credentials with your own local values.
 - If backend fails to start, verify ONNX files exist and `MODEL_DIR` is correct.
 - If frontend cannot reach API, ensure backend is running on port `5000`.
 - If CORS issues appear, confirm `CORS_ORIGIN` matches frontend URL.

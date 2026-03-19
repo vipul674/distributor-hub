@@ -22,6 +22,8 @@ const TREND_WEIGHT = {
 };
 
 const CATEGORY_COST_RATIO = {
+  Beauty: 0.58,
+  Clothing: 0.52,
   Beverages: 0.66,
   Snacks: 0.6,
   Groceries: 0.74,
@@ -31,9 +33,9 @@ const CATEGORY_COST_RATIO = {
 };
 
 function formatCurrency(value) {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("en-IN", {
     style: "currency",
-    currency: "USD",
+    currency: "INR",
     maximumFractionDigits: 0,
   }).format(value);
 }
@@ -42,84 +44,199 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-function getLatestMonthRevenue(monthlyCategory) {
-  const latest = monthlyCategory.reduce((acc, row) => {
-    if (!acc) return { year: row.year, month: row.month };
-    if (row.year > acc.year || (row.year === acc.year && row.month > acc.month)) {
-      return { year: row.year, month: row.month };
-    }
-    return acc;
-  }, null);
-
-  if (!latest) return 0;
-
-  return monthlyCategory
-    .filter((row) => row.year === latest.year && row.month === latest.month)
-    .reduce((sum, row) => sum + row.revenue, 0);
+function getYearMonthKey(year, month) {
+  return `${year}-${String(month).padStart(2, "0")}`;
 }
 
-function buildBusinessInsights(records, monthlySalesSeries, stockAvailability) {
-  const latestRevenue = monthlySalesSeries.at(-1)?.value ?? 0;
-  const previousRevenue = monthlySalesSeries.at(-2)?.value ?? latestRevenue;
-  const revenueGrowth = previousRevenue > 0 ? ((latestRevenue - previousRevenue) / previousRevenue) * 100 : 0;
+function formatMonthLabel(period) {
+  if (!period) return "No data";
 
-  const latestDate = records.reduce((acc, row) => {
-    const date = new Date(row.date);
-    if (!acc || date > acc) return date;
-    return acc;
-  }, null);
+  const date = new Date(Date.UTC(period.year, period.month - 1, 1));
+  return new Intl.DateTimeFormat("en-IN", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
 
-  const cutoff = latestDate ? new Date(latestDate) : new Date();
-  cutoff.setUTCMonth(cutoff.getUTCMonth() - 3);
+function getTransactionKey(record, index) {
+  return record.transactionId || `${record.sourceFile}-${index + 1}`;
+}
 
-  const totalAmount = records.reduce((sum, row) => sum + row.totalAmount, 0);
-  const averageOrderValue = records.length ? totalAmount / records.length : 0;
-  const recentCategorySet = new Set(records.filter((row) => new Date(row.date) >= cutoff).map((row) => row.productCategory));
-  const allCategorySet = new Set(records.map((row) => row.productCategory));
-  const retention = allCategorySet.size ? (recentCategorySet.size / allCategorySet.size) * 100 : 0;
+function calculateChange(currentValue, previousValue) {
+  if (previousValue <= 0) {
+    return currentValue > 0 ? 100 : 0;
+  }
 
-  const recentQuantity = records
-    .filter((row) => new Date(row.date) >= cutoff)
-    .reduce((sum, row) => sum + row.quantity, 0);
-  const stockTurnover = stockAvailability > 0 ? recentQuantity / stockAvailability : 0;
+  return ((currentValue - previousValue) / previousValue) * 100;
+}
+
+function buildTransactionSummaries(records) {
+  const grouped = new Map();
+
+  records.forEach((record, index) => {
+    const key = getTransactionKey(record, index);
+    const existing = grouped.get(key);
+
+    if (existing) {
+      existing.amount += record.totalAmount;
+      existing.quantity += record.quantity;
+      return;
+    }
+
+    grouped.set(key, {
+      id: key,
+      customerId: record.customerId ?? null,
+      date: record.date,
+      amount: record.totalAmount,
+      quantity: record.quantity,
+    });
+  });
+
+  return [...grouped.values()].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
+
+function buildMonthlyPeriodStats(records, transactions) {
+  const grouped = new Map();
+
+  records.forEach((record) => {
+    const date = new Date(record.date);
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth() + 1;
+    const day = date.getUTCDate();
+    const key = getYearMonthKey(year, month);
+    const existing = grouped.get(key) ?? {
+      key,
+      year,
+      month,
+      revenue: 0,
+      quantity: 0,
+      days: new Set(),
+      categories: new Set(),
+      customers: new Set(),
+      transactionIds: new Set(),
+      lastObservedDay: 0,
+    };
+
+    existing.revenue += record.totalAmount;
+    existing.quantity += record.quantity;
+    existing.days.add(day);
+    existing.categories.add(record.productCategory);
+    if (record.customerId) {
+      existing.customers.add(record.customerId);
+    }
+    existing.lastObservedDay = Math.max(existing.lastObservedDay, day);
+    grouped.set(key, existing);
+  });
+
+  transactions.forEach((transaction) => {
+    const date = new Date(transaction.date);
+    const key = getYearMonthKey(date.getUTCFullYear(), date.getUTCMonth() + 1);
+    const existing = grouped.get(key);
+
+    if (!existing) {
+      return;
+    }
+
+    existing.transactionIds.add(transaction.id);
+    if (transaction.customerId) {
+      existing.customers.add(transaction.customerId);
+    }
+  });
+
+  return [...grouped.values()]
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .map((period) => ({
+      key: period.key,
+      year: period.year,
+      month: period.month,
+      revenue: Number(period.revenue.toFixed(2)),
+      quantity: period.quantity,
+      transactionCount: period.transactionIds.size,
+      customerCount: period.customers.size,
+      categoryCount: period.categories.size,
+      dayCount: period.days.size,
+      lastObservedDay: period.lastObservedDay,
+    }));
+}
+
+function isLikelyPartialMonth(period) {
+  return period.dayCount < 10 && period.lastObservedDay < 25;
+}
+
+function getReportingMonth(monthlyPeriods) {
+  if (monthlyPeriods.length === 0) {
+    return null;
+  }
+
+  const latest = monthlyPeriods[monthlyPeriods.length - 1];
+  if (monthlyPeriods.length > 1 && isLikelyPartialMonth(latest)) {
+    return monthlyPeriods[monthlyPeriods.length - 2];
+  }
+
+  return latest;
+}
+
+function getPreviousPeriod(monthlyPeriods, reportingPeriod) {
+  if (!reportingPeriod) {
+    return null;
+  }
+
+  const index = monthlyPeriods.findIndex((period) => period.key === reportingPeriod.key);
+  return index > 0 ? monthlyPeriods[index - 1] : null;
+}
+
+function buildBusinessInsights(reportingPeriod, previousPeriod) {
+  if (!reportingPeriod) {
+    return [];
+  }
+
+  const reportingLabel = formatMonthLabel(reportingPeriod);
+  const previousLabel = previousPeriod ? formatMonthLabel(previousPeriod) : "previous month";
+  const revenueGrowth = calculateChange(reportingPeriod.revenue, previousPeriod?.revenue ?? 0);
+  const transactionChange = calculateChange(reportingPeriod.transactionCount, previousPeriod?.transactionCount ?? 0);
+  const customerChange = calculateChange(reportingPeriod.customerCount, previousPeriod?.customerCount ?? 0);
+  const reportingAverageOrderValue = reportingPeriod.transactionCount
+    ? reportingPeriod.revenue / reportingPeriod.transactionCount
+    : 0;
+  const previousAverageOrderValue = previousPeriod?.transactionCount
+    ? previousPeriod.revenue / previousPeriod.transactionCount
+    : 0;
 
   return [
     {
       title: "Revenue Growth",
       value: `${revenueGrowth >= 0 ? "+" : ""}${revenueGrowth.toFixed(1)}%`,
-      description: "Compared to previous month",
+      description: `${reportingLabel} vs ${previousLabel}`,
       trend: revenueGrowth >= 0 ? "up" : "down",
     },
     {
-      title: "Customer Retention",
-      value: `${retention.toFixed(0)}%`,
-      description: "Active categories in last 3 months",
-      trend: retention >= 80 ? "up" : "down",
+      title: "Transactions",
+      value: `${reportingPeriod.transactionCount}`,
+      description: `Completed sales in ${reportingLabel}`,
+      trend: transactionChange >= 0 ? "up" : "down",
+    },
+    {
+      title: "Unique Customers",
+      value: `${reportingPeriod.customerCount}`,
+      description: `Distinct buyers in ${reportingLabel}`,
+      trend: customerChange >= 0 ? "up" : "down",
     },
     {
       title: "Average Order Value",
-      value: formatCurrency(averageOrderValue),
-      description: "Per bill row",
-      trend: averageOrderValue >= 3000 ? "up" : "down",
-    },
-    {
-      title: "Stock Turnover",
-      value: `${stockTurnover.toFixed(1)}x`,
-      description: "Quarterly quantity to stock ratio",
-      trend: stockTurnover >= 1 ? "up" : "down",
+      value: formatCurrency(reportingAverageOrderValue),
+      description: `Per transaction in ${reportingLabel}`,
+      trend: reportingAverageOrderValue >= previousAverageOrderValue ? "up" : "down",
     },
   ];
 }
 
-function buildProfitMargins(yearlyCategory) {
-  const latestYear = yearlyCategory.reduce((max, row) => Math.max(max, row.year), 0);
-  const rows = yearlyCategory.filter((row) => row.year === latestYear);
-
-  return rows
+function buildProfitMargins(salesByCategory) {
+  return salesByCategory
     .map((row) => {
-      const ratio = CATEGORY_COST_RATIO[row.productCategory] ?? 0.68;
+      const ratio = CATEGORY_COST_RATIO[row.category] ?? 0.68;
       const margin = clamp((1 - ratio) * 100, 12, 60);
-      return { category: row.productCategory, margin: Number(margin.toFixed(0)) };
+      return { category: row.category, margin: Number(margin.toFixed(0)) };
     })
     .sort((a, b) => b.margin - a.margin);
 }
@@ -127,26 +244,31 @@ function buildProfitMargins(yearlyCategory) {
 function buildDemandPredictions(recommendations) {
   return recommendations
     .slice(0, 4)
-    .map((item) => `Stock more ${item.productCategory}; projected demand ${item.predictedDemand.toFixed(0)} units next month`);
+    .map((item) => `${item.productCategory}: projected demand of ${item.predictedDemand.toFixed(0)} units next month`);
 }
 
 function buildTopRecommendations(recommendations) {
   return recommendations.slice(0, 5).map((item, index) => ({
     id: index + 1,
     name: item.productCategory,
-    icon: ["Health", "Personal Care"].includes(item.productCategory) ? "medical" : "snack",
+    predictedDemand: Number(item.predictedDemand.toFixed(0)),
+    icon: ["Health", "Personal Care", "Beauty"].includes(item.productCategory) ? "medical" : "snack",
   }));
 }
 
-function buildBusinessExpansionSuggestions(trends) {
-  const growing = trends.filter((trend) => trend.trend === "Growing");
-  const selected = growing.length > 0 ? growing : trends;
-  return selected.slice(0, 5).map((trend) => `Expand ${trend.productCategory} distribution in high-demand retail zones`);
+function buildBusinessExpansionSuggestions(recommendations) {
+  return recommendations
+    .slice(0, 5)
+    .map((recommendation) => `Prioritize ${recommendation.productCategory} in next month planning and channel promotions`);
 }
 
-export async function buildAnalyticsSnapshot(records, onnxService) {
+export async function buildAnalyticsSnapshot(records, onnxService, damagedProducts = []) {
   const monthlyCategory = buildMonthlyCategory(records);
   const yearlyCategory = buildYearlyCategory(records);
+  const transactionSummaries = buildTransactionSummaries(records);
+  const monthlyPeriods = buildMonthlyPeriodStats(records, transactionSummaries);
+  const reportingPeriod = getReportingMonth(monthlyPeriods);
+  const previousPeriod = getPreviousPeriod(monthlyPeriods, reportingPeriod);
 
   const forecastInputs = buildForecastInputs(monthlyCategory);
   const forecastValues = await onnxService.predictDemand(forecastInputs);
@@ -186,34 +308,21 @@ export async function buildAnalyticsSnapshot(records, onnxService) {
     })
     .sort((a, b) => b.score - a.score);
 
-  const latestMonthRevenue = getLatestMonthRevenue(monthlyCategory);
-  const stockAvailability = Math.max(1, Math.round(monthlyCategory.slice(-6).reduce((sum, row) => sum + row.quantity, 0) / 2));
-  const damagedStock = 0;
-
-  const lowStockAlerts = recommendations.slice(0, 2).map((row, index) => ({
-    id: index + 1,
-    type: "low-stock",
-    message: `Low stock risk: ${row.productCategory} may need replenishment soon`,
-  }));
-
-  const stockAlerts = [
-    ...lowStockAlerts,
-    {
-      id: lowStockAlerts.length + 1,
-      type: "expiring",
-      message: "Review warehouse expiry batches for fragile goods",
-    },
-  ];
-
-  const monthlySales = buildMonthlySalesSeries(monthlyCategory);
-  const yearlySales = buildYearlySalesSeries(yearlyCategory);
-  const weeklySales = buildWeeklySalesSeries(monthlyCategory);
-  const salesByCategory = buildSalesByCategory(monthlyCategory);
+  const normalizedDamagedProducts = damagedProducts.map((item) => ({ ...item }));
+  const monthlySales = buildMonthlySalesSeries(monthlyCategory, reportingPeriod);
+  const yearlySales = buildYearlySalesSeries(yearlyCategory, reportingPeriod);
+  const weeklySales = buildWeeklySalesSeries(records, reportingPeriod);
+  const salesByCategory = buildSalesByCategory(records, reportingPeriod);
   const demandPredictions = buildDemandPredictions(recommendations);
   const topRecommendations = buildTopRecommendations(recommendations);
-  const businessExpansionSuggestions = buildBusinessExpansionSuggestions(trends);
-  const businessInsights = buildBusinessInsights(records, monthlySales, stockAvailability);
-  const profitMargins = buildProfitMargins(yearlyCategory);
+  const businessExpansionSuggestions = buildBusinessExpansionSuggestions(recommendations);
+  const businessInsights = buildBusinessInsights(reportingPeriod, previousPeriod);
+  const profitMargins = buildProfitMargins(salesByCategory);
+  const stockAlerts = recommendations.slice(0, 3).map((recommendation, index) => ({
+    id: index + 1,
+    type: "low-stock",
+    message: `${recommendation.productCategory}: projected demand ${recommendation.predictedDemand.toFixed(0)} units next month`,
+  }));
 
   return {
     monthlyCategory,
@@ -222,16 +331,18 @@ export async function buildAnalyticsSnapshot(records, onnxService) {
     trends,
     recommendations,
     dashboardStats: {
-      monthlySales: formatCurrency(latestMonthRevenue),
-      stockAvailability,
-      damagedStock,
+      monthlySales: formatCurrency(reportingPeriod?.revenue ?? 0),
+      transactions: reportingPeriod?.transactionCount ?? 0,
+      unitsSold: reportingPeriod?.quantity ?? 0,
+      activeCategories: reportingPeriod?.categoryCount ?? 0,
+      reportingPeriodLabel: formatMonthLabel(reportingPeriod),
     },
     monthlySales,
     yearlySales,
     weeklySales,
     salesByCategory,
     stockAlerts,
-    damagedProducts: [],
+    damagedProducts: normalizedDamagedProducts,
     demandPredictions,
     topRecommendations,
     businessInsights,

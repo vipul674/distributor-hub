@@ -3,27 +3,34 @@ import { Upload, FileText, X, CheckCircle, Loader2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { api, UploadResult } from "@/lib/api";
+import { api, ProcessResult, UploadResult } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
 const UploadBills = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
+  const [processResult, setProcessResult] = useState<ProcessResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
   const { mutate: upload, isPending } = useMutation({
     mutationFn: async () => {
       const uploadRes = await api.uploadBills(files);
-      await api.processBills();
-      return uploadRes;
+      const processRes = await api.processBills();
+      return { uploadRes, processRes };
     },
-    onSuccess: (result) => {
-      setUploadResult(result);
+    onSuccess: async ({ uploadRes, processRes }) => {
+      setUploadResult(uploadRes);
+      setProcessResult(processRes);
       setFiles([]);
-      queryClient.invalidateQueries();
-      toast({ title: "Bills uploaded successfully", description: `Parsed ${result.parsedRows} rows from ${result.uploadedFiles} file(s).` });
+      await queryClient.invalidateQueries({ refetchType: "all" });
+      toast({
+        title: "Bills uploaded successfully",
+        description: uploadRes.catalogMode === "full"
+          ? `Parsed ${uploadRes.parsedRows} rows. Uploaded catalog is now active across analytics, stock, and billing pages.`
+          : `Parsed ${uploadRes.parsedRows} rows. Analytics are active, but stock and billing remain in limited mode because product inventory columns were not present.`,
+      });
     },
     onError: (err: Error) => {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
@@ -56,11 +63,14 @@ const UploadBills = () => {
 
   return (
     <DashboardLayout>
-      <DashboardHeader userName="Sahith" />
+      <DashboardHeader userName="Distributor" />
 
       <div className="max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold text-foreground mb-2">Upload Your Bills</h1>
-        <p className="text-muted-foreground mb-8">Compatible file types: PDF, CSV, DOC, TXT</p>
+        <p className="text-muted-foreground mb-2">Compatible file types: CSV, XLSX, XLS, TXT</p>
+        <p className="text-sm text-muted-foreground mb-8">
+          For full website support, use the enriched CSV header with Product ID, Product Name, Supplier, Unit Sale Price, Cost Price, Current Stock Qty, and Reorder Level.
+        </p>
 
         <div
           onDragOver={handleDragOver}
@@ -81,7 +91,7 @@ const UploadBills = () => {
             ref={fileInputRef}
             type="file"
             multiple
-            accept=".pdf,.csv,.doc,.docx,.txt"
+            accept=".csv,.xlsx,.xls,.txt"
             className="hidden"
             onChange={handleFileSelect}
           />
@@ -120,8 +130,17 @@ const UploadBills = () => {
             <div>
               <p className="text-sm font-semibold text-card-foreground">Analysis complete</p>
               <p className="text-xs text-muted-foreground">
-                {uploadResult.uploadedFiles} file(s) · {uploadResult.parsedRows} new rows parsed · {uploadResult.totalRows} total records. Dashboard analytics have been updated.
+                {uploadResult.uploadedFiles} file(s) · {uploadResult.parsedRows} parsed rows · {uploadResult.totalRows} active analytics rows.
+                {" "}
+                {uploadResult.catalogMode === "full"
+                  ? `Loaded ${uploadResult.catalogProducts} uploaded catalog products for stock and bill generation.`
+                  : "This dataset is running in analytics-only mode for stock and bill generation."}
               </p>
+              {processResult && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Categories detected: {processResult.categories.join(", ")}. Forecast rows generated: {processResult.forecastCount}. Damaged products detected: {uploadResult.damagedProducts}.
+                </p>
+              )}
             </div>
           </div>
         )}

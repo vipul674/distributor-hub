@@ -1,4 +1,3 @@
-import { TrendingUp } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import StatsCard from "@/components/dashboard/StatsCard";
@@ -13,18 +12,13 @@ const Index = () => {
   const { data: stats } = useDashboardStats();
   return (
     <DashboardLayout>
-      <DashboardHeader userName="Sahith" />
+      <DashboardHeader userName="Distributor" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatsCard title="Monthly Sales" value={stats?.monthlySales ?? "—"} />
-        <StatsCard title="Stock Availability" value={stats?.stockAvailability ?? "—"} subtitle="Products" />
-        <StatsCard title="Damaged Stock" value={stats?.damagedStock ?? "—"} subtitle="items" />
-        <StatsCard 
-          title="Demand Forecast" 
-          value="High Demand Alerts" 
-          highlight 
-          icon={<TrendingUp size={40} className="text-primary" />}
-        />
+        <StatsCard title="Monthly Sales" value={stats?.monthlySales ?? "—"} subtitle={stats?.reportingPeriodLabel ?? "Latest complete month"} />
+        <StatsCard title="Transactions" value={stats?.transactions ?? "—"} subtitle={stats?.reportingPeriodLabel ?? "Latest complete month"} />
+        <StatsCard title="Units Sold" value={stats?.unitsSold ?? "—"} subtitle={stats?.reportingPeriodLabel ?? "Latest complete month"} />
+        <StatsCard title="Active Categories" value={stats?.activeCategories ?? "—"} subtitle={stats?.reportingPeriodLabel ?? "Latest complete month"} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

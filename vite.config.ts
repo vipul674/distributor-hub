@@ -13,12 +13,35 @@ export default defineConfig(({ mode }) => ({
     },
     proxy: {
       "/api": {
-        target: "http://localhost:5000",
+        target: "http://127.0.0.1:5000",
         changeOrigin: true,
       },
       "/health": {
-        target: "http://localhost:5000",
+        target: "http://127.0.0.1:5000",
         changeOrigin: true,
+      },
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) {
+            return undefined;
+          }
+
+          if (id.includes("recharts") || id.includes("d3-")) {
+            if (id.includes("recharts")) {
+              return "recharts-vendor";
+            }
+
+            if (id.includes("d3-")) {
+              return "d3-vendor";
+            }
+          }
+
+          return undefined;
+        },
       },
     },
   },

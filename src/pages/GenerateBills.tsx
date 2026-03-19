@@ -17,13 +17,12 @@ const GenerateBills = () => {
   const [customerName, setCustomerName] = useState("");
   const [items, setItems] = useState<BillItem[]>([{ product: "", qty: 1, price: 0 }]);
   const [bills, setBills] = useState<RecentBill[]>([]);
+  const priceLookupProducts = allProducts.filter((product) => product.source !== "sales-derived");
+  const hasUploadedCatalog = allProducts.some((product) => product.source === "uploaded");
+  const hasLimitedCatalog = !hasUploadedCatalog && allProducts.some((product) => product.source === "sales-derived");
 
   useEffect(() => {
-    if (bills.length === 0 && recentBills.length > 0) {
-      setBills(recentBills);
-    }
-    // seed only once when empty
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setBills(recentBills);
   }, [recentBills]);
 
   const addItem = () => setItems([...items, { product: "", qty: 1, price: 0 }]);
@@ -40,7 +39,7 @@ const GenerateBills = () => {
 
     // Auto-fill price from product catalog
     if (field === "product") {
-      const match = allProducts.find(
+      const match = priceLookupProducts.find(
         (p) => p.name.toLowerCase() === (value as string).toLowerCase()
       );
       if (match) {
@@ -84,12 +83,19 @@ const GenerateBills = () => {
 
   return (
     <DashboardLayout>
-      <DashboardHeader userName="Sahith" />
+      <DashboardHeader userName="Distributor" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Bill Form */}
         <div className="lg:col-span-2 bg-card rounded-xl p-6 border border-border shadow-sm">
           <h2 className="text-lg font-semibold text-card-foreground mb-6">Generate New Bill</h2>
+          <p className="text-sm text-muted-foreground mb-6">
+            {hasUploadedCatalog
+              ? "Uploaded product names and prices are active for autofill."
+              : hasLimitedCatalog
+                ? "The active upload is analytics-only, so product names and prices must be entered manually."
+                : "Manual catalog entries can be used for autofill when available."}
+          </p>
 
           <div className="mb-4">
             <label className="text-sm text-muted-foreground mb-1 block">Customer Name</label>
@@ -105,13 +111,14 @@ const GenerateBills = () => {
           <div className="space-y-3 mb-4">
             {items.map((item, index) => (
               <div key={index} className="grid grid-cols-[1fr_80px_100px_auto] gap-3 items-center">
-                <input
-                  type="text"
-                  placeholder="Product name"
-                  value={item.product}
-                  onChange={(e) => updateItem(index, "product", e.target.value)}
-                  className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                />
+                  <input
+                    type="text"
+                    placeholder={hasLimitedCatalog ? "Enter product name manually" : "Product name"}
+                    value={item.product}
+                    onChange={(e) => updateItem(index, "product", e.target.value)}
+                    list="product-catalog-options"
+                    className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
                 <input
                   type="number"
                   placeholder="Qty"
@@ -137,6 +144,11 @@ const GenerateBills = () => {
               </div>
             ))}
           </div>
+          <datalist id="product-catalog-options">
+            {priceLookupProducts.map((product) => (
+              <option key={`${product.source}-${product.id}`} value={product.name} />
+            ))}
+          </datalist>
 
           <button onClick={addItem} className="text-sm text-primary hover:underline mb-4">+ Add Item</button>
 

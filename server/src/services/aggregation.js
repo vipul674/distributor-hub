@@ -1,8 +1,19 @@
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const WEEKDAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function toYearMonth(dateIso) {
   const date = new Date(dateIso);
   return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1 };
+}
+
+function toYearMonthKey(year, month) {
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+function matchesYearMonth(dateIso, target) {
+  if (!target) return true;
+  const { year, month } = toYearMonth(dateIso);
+  return year === target.year && month === target.month;
 }
 
 function sortMonthly(a, b) {
@@ -132,30 +143,36 @@ export function buildTrendFeatures(yearlyCategory) {
   });
 }
 
-export function buildMonthlySalesSeries(monthlyCategory) {
+export function buildMonthlySalesSeries(monthlyCategory, reportingMonth = null) {
   const grouped = new Map();
 
   monthlyCategory.forEach((row) => {
-    const key = `${row.year}-${String(row.month).padStart(2, "0")}`;
+    const key = toYearMonthKey(row.year, row.month);
     grouped.set(key, (grouped.get(key) ?? 0) + row.revenue);
   });
 
-  return [...grouped.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-12)
-    .map(([key, value]) => {
-      const [year, month] = key.split("-").map(Number);
-      return {
-        name: `${MONTH_NAMES[month - 1]} ${String(year).slice(-2)}`,
-        value: Number(value.toFixed(2)),
-      };
-    });
+  const entries = [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const endKey = reportingMonth ? toYearMonthKey(reportingMonth.year, reportingMonth.month) : null;
+  const endIndex = endKey ? entries.findIndex(([key]) => key === endKey) : entries.length - 1;
+  const boundedEntries = endIndex >= 0 ? entries.slice(Math.max(0, endIndex - 11), endIndex + 1) : entries.slice(-12);
+
+  return boundedEntries.map(([key, value]) => {
+    const [year, month] = key.split("-").map(Number);
+    return {
+      name: `${MONTH_NAMES[month - 1]} ${String(year).slice(-2)}`,
+      value: Number(value.toFixed(2)),
+    };
+  });
 }
 
-export function buildYearlySalesSeries(yearlyCategory) {
+export function buildYearlySalesSeries(yearlyCategory, reportingMonth = null) {
   const grouped = new Map();
 
   yearlyCategory.forEach((row) => {
+    if (reportingMonth && row.year > reportingMonth.year) {
+      return;
+    }
+
     grouped.set(row.year, (grouped.get(row.year) ?? 0) + row.revenue);
   });
 
@@ -164,34 +181,32 @@ export function buildYearlySalesSeries(yearlyCategory) {
     .map(([year, value]) => ({ name: String(year), value: Number(value.toFixed(2)) }));
 }
 
-export function buildWeeklySalesSeries(monthlyCategory) {
-  const latestMonth = monthlyCategory.reduce((acc, row) => {
-    if (!acc) return row;
-    if (row.year > acc.year) return row;
-    if (row.year === acc.year && row.month > acc.month) return row;
-    return acc;
-  }, null);
+export function buildWeeklySalesSeries(records, reportingMonth = null) {
+  const grouped = new Map(WEEKDAY_NAMES.map((day) => [day, 0]));
 
-  const latestMonthRevenue = monthlyCategory
-    .filter((row) => latestMonth && row.year === latestMonth.year && row.month === latestMonth.month)
-    .reduce((sum, row) => sum + row.revenue, 0);
+  records
+    .filter((record) => matchesYearMonth(record.date, reportingMonth))
+    .forEach((record) => {
+      const date = new Date(record.date);
+      const weekdayIndex = (date.getUTCDay() + 6) % 7;
+      const day = WEEKDAY_NAMES[weekdayIndex];
+      grouped.set(day, (grouped.get(day) ?? 0) + record.totalAmount);
+    });
 
-  const distribution = [0.12, 0.13, 0.13, 0.14, 0.16, 0.2, 0.12];
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-  return days.map((day, index) => ({
+  return WEEKDAY_NAMES.map((day) => ({
     day,
-    sales: Number((latestMonthRevenue * distribution[index]).toFixed(2)),
+    sales: Number((grouped.get(day) ?? 0).toFixed(2)),
   }));
 }
 
-export function buildSalesByCategory(monthlyCategory) {
-  const latestYear = monthlyCategory.reduce((acc, row) => Math.max(acc, row.year), 0);
+export function buildSalesByCategory(records, reportingMonth = null) {
   const grouped = new Map();
 
-  monthlyCategory
-    .filter((row) => row.year === latestYear)
-    .forEach((row) => grouped.set(row.productCategory, (grouped.get(row.productCategory) ?? 0) + row.revenue));
+  records
+    .filter((record) => matchesYearMonth(record.date, reportingMonth))
+    .forEach((record) =>
+      grouped.set(record.productCategory, (grouped.get(record.productCategory) ?? 0) + record.totalAmount)
+    );
 
   const total = [...grouped.values()].reduce((acc, value) => acc + value, 0);
 

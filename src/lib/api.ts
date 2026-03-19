@@ -8,8 +8,10 @@ async function get<T>(path: string): Promise<T> {
 
 export interface DashboardStats {
   monthlySales: string;
-  stockAvailability: number;
-  damagedStock: number;
+  transactions: number;
+  unitsSold: number;
+  activeCategories: number;
+  reportingPeriodLabel: string;
 }
 
 export interface SalesPoint { name: string; value: number }
@@ -23,12 +25,16 @@ export interface StockAlert {
 }
 
 export interface DamagedProduct {
-  id: number;
+  id: string | number;
+  productCode?: string | null;
   name: string;
   category: string;
   quantity: number;
   reason: string;
-  date: string;
+  date: string | null;
+  supplier?: string | null;
+  warehouse?: string | null;
+  source?: "manual" | "uploaded" | "sales-derived" | "seed";
 }
 
 export interface BusinessInsight {
@@ -42,13 +48,18 @@ export interface ProfitMargin { category: string; margin: number }
 
 export interface Product {
   id: number;
+  productCode?: string | null;
   name: string;
   category: string;
   supplier: string;
   costPrice: number;
   sellingPrice: number;
   stockQty: number;
+  reorderLevel?: number | null;
+  warehouse?: string | null;
+  damagedQty?: number;
   status: "in-stock" | "low-stock";
+  source?: "manual" | "uploaded" | "sales-derived";
 }
 
 export interface RecentBill {
@@ -64,7 +75,12 @@ export interface BusinessInsightsResponse {
   profitMargins: ProfitMargin[];
 }
 
-export interface TopRecommendation { id: number; name: string; icon: "medical" | "snack" }
+export interface TopRecommendation {
+  id: number;
+  name: string;
+  predictedDemand: number;
+  icon: "medical" | "snack";
+}
 
 export interface InsightsRecommendationsResponse {
   predictions: string[];
@@ -77,12 +93,17 @@ export interface UploadResult {
   parsedRows: number;
   totalRows: number;
   uploadedRows: number;
+  catalogMode: "full" | "limited";
+  catalogProducts: number;
+  damagedProducts: number;
 }
 
 export interface ProcessResult {
   message: string;
   totalRecords: number;
   uploadedRecords: number;
+  catalogMode: "full" | "limited";
+  catalogProducts: number;
   categories: string[];
   forecastCount: number;
 }
@@ -99,7 +120,7 @@ export const api = {
   getInsightsRecommendations: () => get<InsightsRecommendationsResponse>("/insights/recommendations"),
 
   getProducts: () => get<Product[]>("/products"),
-  createProduct: async (payload: Omit<Product, "id">): Promise<Product> => {
+  createProduct: async (payload: Omit<Product, "id" | "source">): Promise<Product> => {
     const res = await fetch(`${BASE}/products`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -108,7 +129,7 @@ export const api = {
     if (!res.ok) throw new Error(`Create product failed: ${res.status}`);
     return res.json() as Promise<Product>;
   },
-  updateProduct: async (id: number, payload: Partial<Omit<Product, "id">>): Promise<Product> => {
+  updateProduct: async (id: number, payload: Partial<Omit<Product, "id" | "source">>): Promise<Product> => {
     const res = await fetch(`${BASE}/products/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },

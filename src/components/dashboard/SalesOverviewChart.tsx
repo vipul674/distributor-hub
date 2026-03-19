@@ -39,7 +39,7 @@ const SalesOverviewChart = () => {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "hsl(0, 0%, 45%)", fontSize: 12 }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fill: "hsl(0, 0%, 45%)", fontSize: 12 }} tickFormatter={(value) => `${value / 1000}k₹`} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fill: "hsl(0, 0%, 45%)", fontSize: 12 }} tickFormatter={(value) => `₹${Math.round(value / 1000)}k`} />
             <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={50}>
               {data.map((_, index) => <Cell key={`cell-${index}`} fill={getBarColor(index)} />)}
             </Bar>

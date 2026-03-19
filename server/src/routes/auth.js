@@ -1,41 +1,50 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { config } from "../config.js";
 import { User } from "../models/User.js";
 import { requireAuth } from "../middleware/auth.js";
 
 function signToken(user) {
-  if (!process.env.JWT_SECRET) {
+  if (!config.jwtSecret) {
     throw new Error("JWT_SECRET is missing");
   }
-  return jwt.sign({ sub: user._id.toString(), email: user.email }, process.env.JWT_SECRET, { expiresIn: "7d" });
+
+  const subject = user.id ?? user._id?.toString();
+  return jwt.sign({ sub: String(subject), email: user.email }, config.jwtSecret, { expiresIn: "7d" });
 }
 
-export function createAuthRouter() {
+export function createAuthRouter({ store, dbEnabled }) {
   const router = Router();
 
   router.post("/register", async (req, res, next) => {
     try {
       const { name, email, password } = req.body ?? {};
+      const normalizedEmail = String(email).toLowerCase().trim();
 
       if (!email || !password) {
         res.status(400).json({ message: "Email and password are required" });
         return;
       }
 
-      const existing = await User.findOne({ email: String(email).toLowerCase().trim() });
+      const existing = dbEnabled
+        ? await User.findOne({ email: normalizedEmail })
+        : store.findUserByEmail(normalizedEmail);
+
       if (existing) {
         res.status(409).json({ message: "Email already registered" });
         return;
       }
 
       const passwordHash = await bcrypt.hash(String(password), 12);
-      const user = await User.create({ name: name ? String(name) : undefined, email: String(email), passwordHash });
+      const user = dbEnabled
+        ? await User.create({ name: name ? String(name) : undefined, email: normalizedEmail, passwordHash })
+        : store.createUser({ name, email: normalizedEmail, passwordHash });
 
       const token = signToken(user);
       res.status(201).json({
         token,
-        user: { id: user._id.toString(), name: user.name ?? null, email: user.email },
+        user: { id: user.id ?? user._id.toString(), name: user.name ?? null, email: user.email },
       });
     } catch (error) {
       next(error);
@@ -50,7 +59,11 @@ export function createAuthRouter() {
         return;
       }
 
-      const user = await User.findOne({ email: String(email).toLowerCase().trim() });
+      const normalizedEmail = String(email).toLowerCase().trim();
+      const user = dbEnabled
+        ? await User.findOne({ email: normalizedEmail })
+        : store.findUserByEmail(normalizedEmail);
+
       if (!user) {
         res.status(401).json({ message: "Invalid credentials" });
         return;
@@ -65,7 +78,7 @@ export function createAuthRouter() {
       const token = signToken(user);
       res.json({
         token,
-        user: { id: user._id.toString(), name: user.name ?? null, email: user.email },
+        user: { id: user.id ?? user._id.toString(), name: user.name ?? null, email: user.email },
       });
     } catch (error) {
       next(error);
@@ -75,12 +88,18 @@ export function createAuthRouter() {
   router.get("/me", requireAuth, async (req, res, next) => {
     try {
       const userId = req.user?.sub;
-      const user = userId ? await User.findById(userId) : null;
+      const user = userId
+        ? dbEnabled
+          ? await User.findById(userId)
+          : store.findUserById(userId)
+        : null;
+
       if (!user) {
         res.status(404).json({ message: "User not found" });
         return;
       }
-      res.json({ id: user._id.toString(), name: user.name ?? null, email: user.email });
+
+      res.json({ id: user.id ?? user._id.toString(), name: user.name ?? null, email: user.email });
     } catch (error) {
       next(error);
     }
@@ -88,4 +107,3 @@ export function createAuthRouter() {
 
   return router;
 }
-

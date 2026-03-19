@@ -6,6 +6,23 @@ import path from "node:path";
 dotenv.config({ path: path.resolve(process.cwd(), "env/.env") });
 dotenv.config();
 
+function normalizeDataMode(value) {
+  if (value === "mongo" || value === "memory") {
+    return value;
+  }
+
+  return "auto";
+}
+
+function hasMongoScheme(value) {
+  return /^mongodb(\+srv)?:\/\//.test(value);
+}
+
+function isPlaceholderMongoUri(value) {
+  const normalized = value.trim().toLowerCase();
+  return normalized === "your-mongodb-connection-string" || normalized.includes("<your-mongodb-connection-string>");
+}
+
 function resolveModelDir() {
   const envDir = process.env.MODEL_DIR ? path.resolve(process.cwd(), process.env.MODEL_DIR) : undefined;
   const candidates = [
@@ -31,4 +48,11 @@ export const config = {
   port: Number(process.env.PORT ?? 5000),
   corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:8080",
   modelDir: resolveModelDir(),
+  dataMode: normalizeDataMode(process.env.DATA_MODE),
+  mongoUri: (process.env.MONGODB_URI ?? "").trim(),
+  hasMongoUri: Boolean((process.env.MONGODB_URI ?? "").trim()),
+  mongoUriHasValidScheme: hasMongoScheme((process.env.MONGODB_URI ?? "").trim()),
+  mongoUriIsPlaceholder: isPlaceholderMongoUri(process.env.MONGODB_URI ?? ""),
+  mongoDbName: process.env.MONGODB_DB_NAME ?? "supplyDesk",
+  jwtSecret: process.env.JWT_SECRET?.trim() || (process.env.NODE_ENV === "production" ? "" : "dev-only-jwt-secret"),
 };
