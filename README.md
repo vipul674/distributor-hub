@@ -146,6 +146,37 @@ This repository can be deployed as one URL where the Express backend serves the 
 
 You can also deploy using the included `render.yaml` file for faster setup.
 
+## Deploy for Portfolio Without Card (Koyeb)
+
+If Render asks for a payment method, deploy this same repository to Koyeb using the included `Dockerfile`.
+
+### Koyeb steps
+
+1. Go to Koyeb and create an app from your GitHub repository.
+2. Choose **Dockerfile** as the deployment method.
+3. Keep default region and instance size for free usage.
+4. Set environment variables:
+
+- `NODE_ENV=production`
+- `PORT=8000`
+- `CORS_ORIGIN=*`
+- `MODEL_DIR=Retail_Models_Onnx`
+- `DATA_MODE=auto`
+- `MONGODB_URI=<your mongodb uri>`
+- `MONGODB_DB_NAME=supplyDesk`
+- `JWT_SECRET=<strong-random-secret>`
+
+5. Deploy and verify:
+
+- App opens at your Koyeb domain.
+- `<your-domain>/health` returns JSON.
+- Dashboard pages load API data.
+
+### Notes
+
+- `CORS_ORIGIN=*` is acceptable for portfolio demos; for better security, replace it with your Koyeb app URL after first deploy.
+- The backend serves the frontend build, so you only share one URL.
+
 ## ONNX Models Required
 
 These files must exist in `Retail_Models_Onnx/`:
