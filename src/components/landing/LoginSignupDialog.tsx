@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/context/AuthContext";
 
 interface LoginSignupDialogProps {
   open: boolean;
@@ -19,22 +20,44 @@ interface LoginSignupDialogProps {
 
 const LoginSignupDialog = ({ open, onOpenChange }: LoginSignupDialogProps) => {
   const navigate = useNavigate();
+  const { login, register } = useAuth();
+  const [tab, setTab] = useState<"login" | "signup">("login");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    onOpenChange(false);
-    navigate("/dashboard");
+    setErrorMessage(null);
+    setSubmitting(true);
+    try {
+      await login(loginEmail, loginPassword);
+      onOpenChange(false);
+      navigate("/dashboard");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Login failed");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    onOpenChange(false);
-    navigate("/dashboard");
+    setErrorMessage(null);
+    setSubmitting(true);
+    try {
+      await register(signupName, signupEmail, signupPassword);
+      onOpenChange(false);
+      navigate("/dashboard");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Signup failed");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -46,7 +69,7 @@ const LoginSignupDialog = ({ open, onOpenChange }: LoginSignupDialogProps) => {
             Sign in or create an account to access your dashboard.
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="login" className="w-full">
+        <Tabs value={tab} onValueChange={(value) => setTab(value as "login" | "signup")} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="signup">Sign up</TabsTrigger>
@@ -74,9 +97,10 @@ const LoginSignupDialog = ({ open, onOpenChange }: LoginSignupDialogProps) => {
                   required
                 />
               </div>
-              <Button type="submit" className="w-full">
+              <Button type="submit" disabled={submitting} className="w-full">
                 Log in
               </Button>
+              {errorMessage ? <p className="text-sm text-destructive mt-2">{errorMessage}</p> : null}
             </form>
           </TabsContent>
           <TabsContent value="signup">
@@ -113,9 +137,10 @@ const LoginSignupDialog = ({ open, onOpenChange }: LoginSignupDialogProps) => {
                   required
                 />
               </div>
-              <Button type="submit" className="w-full">
+              <Button type="submit" disabled={submitting} className="w-full">
                 Create account
               </Button>
+              {errorMessage ? <p className="text-sm text-destructive mt-2">{errorMessage}</p> : null}
             </form>
           </TabsContent>
         </Tabs>

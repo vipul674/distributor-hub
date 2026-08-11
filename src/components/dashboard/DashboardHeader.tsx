@@ -1,13 +1,18 @@
 import { ChevronDown, LogOut } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface DashboardHeaderProps {
-  userName: string;
+  userName?: string;
 }
 
 const DashboardHeader = ({ userName }: DashboardHeaderProps) => {
+  const { user, logout } = useAuth();
+  const displayName = user?.name ?? userName ?? "Distributor";
+
   const handleLogout = () => {
+    logout();
     window.location.href = "/";
   };
 

@@ -8,12 +8,6 @@ import { DataStore } from "./services/store.js";
 async function bootstrap() {
   const dbEnabled = await connectDB();
   const store = new DataStore({ useDemoData: !dbEnabled });
-  if (dbEnabled) {
-    const uploadedRecords = await SalesRecord.find().select({ _id: 0, __v: 0 }).sort({ date: 1, createdAt: 1 }).lean();
-    if (uploadedRecords.length > 0) {
-      store.setUploadedBills(uploadedRecords);
-    }
-  }
 
   const onnxService = new OnnxService(config.modelDir);
   await onnxService.initialize();

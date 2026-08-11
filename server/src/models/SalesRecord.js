@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const salesRecordSchema = new mongoose.Schema(
   {
+    userId: { type: String, required: true, index: true },
     sourceFile: { type: String, required: true, trim: true },
     transactionId: { type: String, trim: true, default: null },
     customerId: { type: String, trim: true, default: null },

@@ -26,7 +26,7 @@ export function createApp({ store, onnxService, dbEnabled }) {
   app.use("/api/auth", createAuthRouter({ store, dbEnabled }));
   app.use("/api/products", createProductsRouter({ store, dbEnabled }));
   app.use("/api/bills", createBillsRouter({ store, onnxService, dbEnabled }));
-  app.use("/api/ml", createMlRouter({ store, onnxService }));
+  app.use("/api/ml", createMlRouter({ store, onnxService, dbEnabled }));
   app.use("/api", createAnalyticsRouter({ store, onnxService, dbEnabled }));
 
   const distDir = process.env.FRONTEND_DIST_DIR

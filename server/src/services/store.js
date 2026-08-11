@@ -44,47 +44,63 @@ function normalizeEmail(email) {
   return String(email).trim().toLowerCase();
 }
 
+function getUserKey(userId) {
+  return userId ? String(userId) : "__global__";
+}
+
 export class DataStore {
   constructor({ useDemoData = true } = {}) {
     this.seedBills = useDemoData ? generateSeedBills() : [];
-    this.uploadedBills = [];
-    this.version = 1;
-    this.snapshotCache = null;
     this.products = cloneItems(useDemoData ? seedProducts : []);
     this.defaultRecentBills = cloneItems(useDemoData ? seedRecentBills : []);
-    this.manualRecentBills = [];
-    this.uploadedRecentBills = [];
-    this.uploadedDamagedProducts = [];
-    this.uploadCatalogMode = "limited";
     this.damagedProducts = cloneItems(useDemoData ? seedDamagedProducts : []);
     this.users = [];
     this.nextProductId = this.products.reduce((max, product) => Math.max(max, product.id), 0) + 1;
     this.nextUserId = 1;
+    this.userData = new Map();
   }
 
-  getAllBills() {
-    if (this.uploadedBills.length > 0) {
-      return cloneItems(this.uploadedBills);
+  getUserState(userId) {
+    const key = getUserKey(userId);
+    if (!this.userData.has(key)) {
+      this.userData.set(key, {
+        uploadedBills: [],
+        uploadedRecentBills: [],
+        uploadedDamagedProducts: [],
+        manualRecentBills: [],
+        uploadCatalogMode: "limited",
+        version: 1,
+        snapshotCache: null,
+      });
+    }
+    return this.userData.get(key);
+  }
+
+  getAllBills(userId) {
+    const state = this.getUserState(userId);
+    if (state.uploadedBills.length > 0) {
+      return cloneItems(state.uploadedBills);
     }
 
     return cloneItems(this.seedBills);
   }
 
-  getUploadCount() {
-    return this.uploadedBills.length;
+  getUploadCount(userId) {
+    return this.getUserState(userId).uploadedBills.length;
   }
 
-  setUploadedBills(records) {
-    this.uploadedBills = cloneItems(records);
-    this.uploadedRecentBills = buildRecentBillsFromRecords(records);
-    this.uploadedDamagedProducts = buildDamagedProductsFromRecords(records);
-    this.uploadCatalogMode = getCatalogMode(records);
-    this.version += 1;
-    this.snapshotCache = null;
+  setUploadedBills(records, userId) {
+    const state = this.getUserState(userId);
+    state.uploadedBills = cloneItems(records);
+    state.uploadedRecentBills = buildRecentBillsFromRecords(records);
+    state.uploadedDamagedProducts = buildDamagedProductsFromRecords(records);
+    state.uploadCatalogMode = getCatalogMode(records);
+    state.version += 1;
+    state.snapshotCache = null;
   }
 
-  hasUploadedBills() {
-    return this.uploadedBills.length > 0;
+  hasUploadedBills(userId) {
+    return this.getUserState(userId).uploadedBills.length > 0;
   }
 
   getProducts() {
@@ -148,10 +164,11 @@ export class DataStore {
     return true;
   }
 
-  getRecentBills() {
-    const recentBills = this.uploadedRecentBills.length > 0
-      ? [...this.manualRecentBills, ...this.uploadedRecentBills]
-      : [...this.manualRecentBills, ...this.defaultRecentBills];
+  getRecentBills(userId) {
+    const state = this.getUserState(userId);
+    const recentBills = state.uploadedRecentBills.length > 0
+      ? [...state.manualRecentBills, ...state.uploadedRecentBills]
+      : [...state.manualRecentBills, ...this.defaultRecentBills];
 
     const deduped = [];
     const seen = new Set();
@@ -170,12 +187,13 @@ export class DataStore {
     return deduped.slice(0, 20);
   }
 
-  getUploadedRecentBills() {
-    return cloneItems(this.uploadedRecentBills);
+  getUploadedRecentBills(userId) {
+    return cloneItems(this.getUserState(userId).uploadedRecentBills);
   }
 
-  createManualBill(payload) {
-    const existingBills = [...this.manualRecentBills, ...this.defaultRecentBills, ...this.uploadedRecentBills];
+  createManualBill(payload, userId) {
+    const state = this.getUserState(userId);
+    const existingBills = [...state.manualRecentBills, ...this.defaultRecentBills, ...state.uploadedRecentBills];
     if (existingBills.some((bill) => bill.id === payload.id)) {
       const error = new Error("Bill already exists");
       error.code = 11000;
@@ -190,13 +208,14 @@ export class DataStore {
       items: Number(payload.items),
     };
 
-    this.manualRecentBills.unshift(bill);
+    state.manualRecentBills.unshift(bill);
     return { ...bill };
   }
 
-  getDamagedProducts() {
-    const baseDamagedProducts = this.uploadedBills.length > 0
-      ? this.uploadedDamagedProducts
+  getDamagedProducts(userId) {
+    const state = this.getUserState(userId);
+    const baseDamagedProducts = state.uploadedBills.length > 0
+      ? state.uploadedDamagedProducts
       : this.damagedProducts;
     const manualDamagedProducts = buildDamagedProductsFromCatalog(
       this.products.map((product) => ({ ...product, source: "manual" }))
@@ -205,8 +224,8 @@ export class DataStore {
     return mergeDamagedProducts(baseDamagedProducts, manualDamagedProducts);
   }
 
-  getUploadCatalogMode() {
-    return this.uploadCatalogMode;
+  getUploadCatalogMode(userId) {
+    return this.getUserState(userId).uploadCatalogMode;
   }
 
   findUserByEmail(email) {
@@ -230,14 +249,15 @@ export class DataStore {
     return this.users.find((user) => user.id === String(id)) ?? null;
   }
 
-  async getOrBuildSnapshot(builder) {
-    if (this.snapshotCache && this.snapshotCache.version === this.version) {
-      return this.snapshotCache.snapshot;
+  async getOrBuildSnapshot(builder, userId) {
+    const state = this.getUserState(userId);
+    if (state.snapshotCache && state.snapshotCache.version === state.version) {
+      return state.snapshotCache.snapshot;
     }
 
-    const snapshot = await builder(this.getAllBills());
-    this.snapshotCache = {
-      version: this.version,
+    const snapshot = await builder(this.getAllBills(userId));
+    state.snapshotCache = {
+      version: state.version,
       snapshot,
     };
 

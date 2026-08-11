@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "distributor-hub-server": "file:.."
+  }
+}

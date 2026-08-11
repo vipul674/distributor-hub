@@ -1,7 +1,19 @@
+import { getAuthToken } from "@/lib/auth";
+
 const BASE = "/api";
 
+function createHeaders(override?: Record<string, string>) {
+  const token = getAuthToken();
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...override,
+  };
+}
+
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`);
+  const res = await fetch(`${BASE}${path}`, {
+    headers: createHeaders(),
+  });
   if (!res.ok) throw new Error(`API ${path} failed: ${res.status}`);
   return res.json() as Promise<T>;
 }
@@ -123,7 +135,7 @@ export const api = {
   createProduct: async (payload: Omit<Product, "id" | "source">): Promise<Product> => {
     const res = await fetch(`${BASE}/products`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: createHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error(`Create product failed: ${res.status}`);
@@ -132,14 +144,17 @@ export const api = {
   updateProduct: async (id: number, payload: Partial<Omit<Product, "id" | "source">>): Promise<Product> => {
     const res = await fetch(`${BASE}/products/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: createHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error(`Update product failed: ${res.status}`);
     return res.json() as Promise<Product>;
   },
   deleteProduct: async (id: number): Promise<void> => {
-    const res = await fetch(`${BASE}/products/${id}`, { method: "DELETE" });
+    const res = await fetch(`${BASE}/products/${id}`, {
+      method: "DELETE",
+      headers: createHeaders(),
+    });
     if (!res.ok && res.status !== 204) throw new Error(`Delete product failed: ${res.status}`);
   },
 
@@ -147,7 +162,7 @@ export const api = {
   createManualBill: async (payload: RecentBill): Promise<RecentBill> => {
     const res = await fetch(`${BASE}/bills/manual`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: createHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error(`Create bill failed: ${res.status}`);
@@ -157,13 +172,20 @@ export const api = {
   uploadBills: async (files: File[]): Promise<UploadResult> => {
     const formData = new FormData();
     files.forEach((file) => formData.append("files", file));
-    const res = await fetch(`${BASE}/bills/upload`, { method: "POST", body: formData });
+    const res = await fetch(`${BASE}/bills/upload`, {
+      method: "POST",
+      headers: createHeaders(),
+      body: formData,
+    });
     if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
     return res.json() as Promise<UploadResult>;
   },
 
   processBills: async (): Promise<ProcessResult> => {
-    const res = await fetch(`${BASE}/bills/process`, { method: "POST" });
+    const res = await fetch(`${BASE}/bills/process`, {
+      method: "POST",
+      headers: createHeaders(),
+    });
     if (!res.ok) throw new Error(`Process failed: ${res.status}`);
     return res.json() as Promise<ProcessResult>;
   },

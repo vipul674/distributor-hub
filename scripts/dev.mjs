@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+const npmCommand = process.env.NPM_EXECUTABLE ?? "npm";
 const healthUrl = process.env.DEV_HEALTH_URL ?? "http://127.0.0.1:5000/health";
 const healthRetryMs = Number.parseInt(process.env.DEV_HEALTH_RETRY_MS ?? "500", 10);
 const healthTimeoutMs = Number.parseInt(process.env.DEV_HEALTH_TIMEOUT_MS ?? "120000", 10);
@@ -59,6 +59,7 @@ function spawnLoggedProcess(name, args) {
     cwd: process.cwd(),
     env: process.env,
     stdio: "inherit",
+    shell: true,
   });
 
   childProcesses.set(name, child);

@@ -4,6 +4,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/context/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 const Landing = lazy(() => import("./pages/Landing"));
 const Index = lazy(() => import("./pages/Index"));
@@ -25,25 +27,76 @@ const RouteFallback = () => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Suspense fallback={<RouteFallback />}>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/dashboard" element={<Index />} />
-            <Route path="/upload-bills" element={<UploadBills />} />
-            <Route path="/generate-bills" element={<GenerateBills />} />
-            <Route path="/stock-management" element={<StockManagement />} />
-            <Route path="/sales-analysis" element={<SalesAnalysis />} />
-            <Route path="/damaged-products" element={<DamagedProducts />} />
-            <Route path="/business-insights" element={<BusinessInsights />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/upload-bills"
+                element={
+                  <ProtectedRoute>
+                    <UploadBills />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/generate-bills"
+                element={
+                  <ProtectedRoute>
+                    <GenerateBills />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/stock-management"
+                element={
+                  <ProtectedRoute>
+                    <StockManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/sales-analysis"
+                element={
+                  <ProtectedRoute>
+                    <SalesAnalysis />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/damaged-products"
+                element={
+                  <ProtectedRoute>
+                    <DamagedProducts />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/business-insights"
+                element={
+                  <ProtectedRoute>
+                    <BusinessInsights />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import LoginSignupDialog from "./LoginSignupDialog";
+import { useAuth } from "@/context/AuthContext";
 
 const LandingNavigation = () => {
   const [authOpen, setAuthOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   return (
     <>
@@ -36,14 +38,32 @@ const LandingNavigation = () => {
               </a>
             </div>
 
-            <Button
-              variant="nav"
-              size="default"
-              className="px-6 text-white border border-white hover:text-purple-500 hover:border-purple-500 transition-colors"
-              onClick={() => setAuthOpen(true)}
-            >
-              Login/Signup
-            </Button>
+            {user ? (
+              <div className="flex items-center gap-3">
+                <Link to="/dashboard">
+                  <Button variant="nav" size="default" className="px-6 text-white border border-white hover:text-purple-500 hover:border-purple-500 transition-colors">
+                    Dashboard
+                  </Button>
+                </Link>
+                <Button
+                  variant="nav"
+                  size="default"
+                  className="px-6 text-white border border-white hover:text-purple-500 hover:border-purple-500 transition-colors"
+                  onClick={logout}
+                >
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="nav"
+                size="default"
+                className="px-6 text-white border border-white hover:text-purple-500 hover:border-purple-500 transition-colors"
+                onClick={() => setAuthOpen(true)}
+              >
+                Login/Signup
+              </Button>
+            )}
           </div>
         </div>
       </nav>
